@@ -51,19 +51,19 @@ When storage transactions are executed, the system emits logs to track entity li
   - Data: Contains the expiration block number
 
 - **GolemBaseStorageEntityUpdated**: Emitted when an entity is updated
-  - Event signature: `GolemBaseStorageEntityUpdated(bytes32 entityKey, uint256 newExpirationBlock)`
+  - Event signature: `GolemBaseStorageEntityUpdated(uint256 entityKey, uint256 newExpirationBlock)`
   - Event topic: `0xf371f40aa6932ad9dacbee236e5f3b93d478afe3934b5cfec5ea0d800a41d165`
   - Topics: `[GolemBaseStorageEntityUpdated, entityKey]`
   - Data: Contains the new expiration block number
 
 - **GolemBaseStorageEntityDeleted**: Emitted when an entity is deleted
-  - Event signature: `GolemBaseStorageEntityDeleted(bytes32 entityKey)`
+  - Event signature: `GolemBaseStorageEntityDeleted(uint256 entityKey)`
   - Event topic: `0x0297b0e6eaf1bc2289906a8123b8ff5b19e568a60d002d47df44f8294422af93`
   - Topics: `[GolemBaseStorageEntityDeleted, entityKey]`
   - Data: Empty
 
 - **GolemBaseStorageEntityBTLExtended**: Emitted when an entity's BTL is extended
-  - Event signature: `GolemBaseStorageEntityBTLExtended(bytes32 entityKey, uint256 oldExpirationBlock, uint256 newExpirationBlock)`
+  - Event signature: `GolemBaseStorageEntityBTLExtended(uint256 entityKey, uint256 oldExpirationBlock, uint256 newExpirationBlock)`
   - Event topic: `0x59e1f1f7ff9674612ab2457a6a68a8edd1360241e739f09fae1082ea4498f230`
   - Topics: `[GolemBaseStorageEntityBTLExtended, entityKey]`
   - Data: Contains both the old and new expiration block numbers
