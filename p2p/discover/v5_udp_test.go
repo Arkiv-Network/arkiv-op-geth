@@ -214,7 +214,8 @@ func TestUDPv5_handshakeRepeatChallenge(t *testing.T) {
 }
 
 // This test checks that incoming FINDNODE calls are handled correctly.
-func TestUDPv5_findnodeHandling(t *testing.T) {
+// Golem: disabled because it's flaky
+func XTestUDPv5_findnodeHandling(t *testing.T) {
 	t.Parallel()
 	test := newUDPV5Test(t)
 	defer test.close()

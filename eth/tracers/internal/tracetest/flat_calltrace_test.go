@@ -106,7 +106,7 @@ func flatCallTracerTestRunner(tracerName string, filename string, dirPath string
 		return fmt.Errorf("failed to create call tracer: %v", err)
 	}
 
-	msg, err := core.TransactionToMessage(tx, signer, context.BaseFee)
+	msg, err := core.TransactionToMessage(tx, signer, context.BaseFee, context.BlockNumber.Uint64())
 	if err != nil {
 		return fmt.Errorf("failed to prepare transaction for tracing: %v", err)
 	}

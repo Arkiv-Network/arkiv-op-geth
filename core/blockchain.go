@@ -282,12 +282,20 @@ type BlockChain struct {
 	logger     *tracing.Hooks
 
 	lastForkReadyAlert time.Time // Last time there was a fork readiness print out
+	onNewBlock         func(block *types.Block, receipts []*types.Receipt) error
 }
 
 // NewBlockChain returns a fully initialised block chain using information
 // available in the database. It initialises the default Ethereum Validator
 // and Processor.
 func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, genesis *Genesis, overrides *ChainOverrides, engine consensus.Engine, vmConfig vm.Config, txLookupLimit *uint64) (*BlockChain, error) {
+	return NewBlockChainWithOnNewBlock(db, cacheConfig, genesis, overrides, engine, vmConfig, txLookupLimit, nil)
+}
+
+// NewBlockChain returns a fully initialised block chain using information
+// available in the database. It initialises the default Ethereum Validator
+// and Processor.
+func NewBlockChainWithOnNewBlock(db ethdb.Database, cacheConfig *CacheConfig, genesis *Genesis, overrides *ChainOverrides, engine consensus.Engine, vmConfig vm.Config, txLookupLimit *uint64, onNewBlock func(block *types.Block, receipts []*types.Receipt) error) (*BlockChain, error) {
 	if cacheConfig == nil {
 		cacheConfig = defaultCacheConfig
 	}
@@ -334,6 +342,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, genesis *Genesis
 		engine:        engine,
 		vmConfig:      vmConfig,
 		logger:        vmConfig.Tracer,
+		onNewBlock:    onNewBlock,
 	}
 	bc.hc, err = NewHeaderChain(db, chainConfig, engine, bc.insertStopped)
 	if err != nil {
@@ -1155,6 +1164,15 @@ func (bc *BlockChain) ExportN(w io.Writer, first uint64, last uint64) error {
 //
 // Note, this function assumes that the `mu` mutex is held!
 func (bc *BlockChain) writeHeadBlock(block *types.Block) {
+
+	if bc.onNewBlock != nil {
+		receipts := bc.GetReceiptsByHash(block.Hash())
+		err := bc.onNewBlock(block, receipts)
+		if err != nil {
+			log.Crit("Failed to call onNewBlock", "err", err)
+		}
+	}
+
 	// Add the block to the canonical chain number scheme and mark as the head
 	batch := bc.db.NewBatch()
 	rawdb.WriteHeadHeaderHash(batch, block.Hash())

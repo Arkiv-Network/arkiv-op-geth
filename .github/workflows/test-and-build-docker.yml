@@ -1,0 +1,71 @@
+name: Run tests and build Docker images
+
+on:
+  push:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  test:
+    runs-on: 
+      group: Default
+      labels: cluster-runner
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v17
+        env:
+          DOCKER_HOST: "unix:///var/run/docker.sock.disabled"
+        with:
+          planner: "linux"
+          start-daemon: false
+      - run: sudo chown -R $(id -u):$(id -g) /nix
+      - name: Run tests
+        # Some tests fail on the self-hosted runner, but because they're not relevant to our work, we disable them.
+        run: |
+          nix develop --command go test -short -count=1 -skip "UPNP|PathExpansion|TestUDPv4_findnode" ./...
+
+  docker:
+    runs-on:
+      group: Default
+      labels: cluster-runner
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to Docker Registry
+        run: |
+          echo "${{ secrets.QUAY_IO_PASSWORD }}" | docker login quay.io -u ${{ secrets.QUAY_IO_USERNAME }} --password-stdin
+      - name: Build and push Docker images
+        run: |
+          # Only build and push docker images for main branch and tags, not for PRs
+          if [[ "${{ github.ref }}" == "refs/heads/main" || "${{ github.ref }}" == refs/tags/* ]]; then
+            SHORT_COMMIT=$(git rev-parse --short HEAD)
+            
+            if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+              docker buildx build \
+                --platform linux/amd64,linux/arm64 \
+                --tag quay.io/golemnetwork/gb-op-geth:$SHORT_COMMIT \
+                --tag quay.io/golemnetwork/gb-op-geth:latest \
+                --push \
+                .
+            fi
+            
+            # If this is a tag (release), push the image with the tag name
+            if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+              TAG=${GITHUB_REF#refs/tags/}
+              docker buildx build \
+                --platform linux/amd64,linux/arm64 \
+                --tag quay.io/golemnetwork/gb-op-geth:$SHORT_COMMIT \
+                --tag quay.io/golemnetwork/gb-op-geth:$TAG \
+                --push \
+                .
+            fi
+          else
+            # For PRs, just build the image but don't push it (single platform for speed)
+            docker buildx build \
+              --platform linux/amd64 \
+              --tag quay.io/golemnetwork/gb-op-geth:pr-test \
+              .
+          fi

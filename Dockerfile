@@ -14,13 +14,17 @@ COPY go.sum /go-ethereum/
 RUN cd /go-ethereum && go mod download
 
 ADD . /go-ethereum
-RUN cd /go-ethereum && go run build/ci.go install -static ./cmd/geth
+RUN --mount=type=cache,target=/root/.cache/go-build cd /go-ethereum && go run build/ci.go install -static ./cmd/geth
+RUN --mount=type=cache,target=/root/.cache/go-build cd /go-ethereum && go run build/ci.go install -static ./golem-base/etl/mongodb
+RUN --mount=type=cache,target=/root/.cache/go-build cd /go-ethereum && go run build/ci.go install -static ./golem-base/etl/sqlite
 
 # Pull Geth into a second stage deploy alpine container
 FROM alpine:latest
 
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates curl
 COPY --from=builder /go-ethereum/build/bin/geth /usr/local/bin/
+COPY --from=builder /go-ethereum/build/bin/mongodb /usr/local/bin/
+COPY --from=builder /go-ethereum/build/bin/sqlite /usr/local/bin/
 
 EXPOSE 8545 8546 30303 30303/udp
 ENTRYPOINT ["geth"]

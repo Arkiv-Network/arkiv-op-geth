@@ -27,6 +27,9 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+	"github.com/ethereum/go-ethereum/golem-base/address"
+	"github.com/ethereum/go-ethereum/golem-base/housekeepingtx"
+	"github.com/ethereum/go-ethereum/golem-base/storagetx"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/holiman/uint256"
 )
@@ -169,10 +172,18 @@ type Message struct {
 	IsDepositTx    bool                 // IsDepositTx indicates the message is force-included and can persist a mint.
 	Mint           *big.Int             // Mint is the amount to mint before EVM processing, or nil if there is no minting.
 	RollupCostData types.RollupCostData // RollupCostData caches data to compute the fee we charge for data availability
+
+	// PostValidation is an optional check of the resulting post-state, if and when the message is
+	// applied fully to the EVM. This function may return an error to deny inclusion of the message.
+	PostValidation func(evm *vm.EVM, result *ExecutionResult) error
+
+	TransactionHash common.Hash
+
+	BlockNumber uint64
 }
 
 // TransactionToMessage converts a transaction into a Message.
-func TransactionToMessage(tx *types.Transaction, s types.Signer, baseFee *big.Int) (*Message, error) {
+func TransactionToMessage(tx *types.Transaction, s types.Signer, baseFee *big.Int, blockNumber uint64) (*Message, error) {
 	msg := &Message{
 		Nonce:                 tx.Nonce(),
 		GasLimit:              tx.Gas(),
@@ -189,10 +200,12 @@ func TransactionToMessage(tx *types.Transaction, s types.Signer, baseFee *big.In
 		BlobHashes:            tx.BlobHashes(),
 		BlobGasFeeCap:         tx.BlobGasFeeCap(),
 
-		IsSystemTx:     tx.IsSystemTx(),
-		IsDepositTx:    tx.IsDepositTx(),
-		Mint:           tx.Mint(),
-		RollupCostData: tx.RollupCostData(),
+		IsSystemTx:      tx.IsSystemTx(),
+		IsDepositTx:     tx.IsDepositTx(),
+		Mint:            tx.Mint(),
+		RollupCostData:  tx.RollupCostData(),
+		TransactionHash: tx.Hash(),
+		BlockNumber:     blockNumber,
 	}
 	// If baseFee provided, set gasPrice to effectiveGasPrice.
 	if baseFee != nil {
@@ -201,6 +214,7 @@ func TransactionToMessage(tx *types.Transaction, s types.Signer, baseFee *big.In
 			msg.GasPrice = msg.GasFeeCap
 		}
 	}
+
 	var err error
 	msg.From, err = types.Sender(s, tx)
 	return msg, err
@@ -573,6 +587,7 @@ func (st *stateTransition) innerExecute() (*ExecutionResult, error) {
 	if contractCreation {
 		ret, _, st.gasRemaining, vmerr = st.evm.Create(msg.From, msg.Data, st.gasRemaining, value)
 	} else {
+
 		// Increment the nonce for the next transaction.
 		st.state.SetNonce(msg.From, st.state.GetNonce(msg.From)+1, tracing.NonceChangeEoACall)
 
@@ -593,8 +608,46 @@ func (st *stateTransition) innerExecute() (*ExecutionResult, error) {
 			st.state.AddAddressToAccessList(addr)
 		}
 
-		// Execute the transaction's call.
-		ret, st.gasRemaining, vmerr = st.evm.Call(msg.From, st.to(), msg.Data, st.gasRemaining, value)
+		switch {
+		case st.to() == address.GolemBaseStorageProcessorAddress:
+			st.evm.Context.Transfer(st.evm.StateDB, msg.From, st.to(), value)
+
+			if len(st.msg.Data) > 0 {
+				var logs []*types.Log
+				// run the storage transaction
+				logs, vmerr = storagetx.ExecuteTransaction(st.msg.Data, st.msg.BlockNumber, st.msg.TransactionHash, msg.From, st.evm.StateDB)
+				if err != nil {
+					return nil, fmt.Errorf("failed to execute storage transaction: %w", err)
+				}
+
+				if vmerr == nil {
+					// add logs of the storage transaction
+					for _, log := range logs {
+						st.evm.StateDB.AddLog(log)
+					}
+				}
+			}
+		case msg.IsDepositTx:
+
+			logs, err := housekeepingtx.ExecuteTransaction(st.msg.BlockNumber, st.msg.TransactionHash, st.evm.StateDB)
+			if err != nil {
+				return nil, fmt.Errorf("failed to execute housekeeping transaction: %w", err)
+			}
+
+			// add logs of the houskeeping transaction
+			for _, log := range logs {
+				st.evm.StateDB.AddLog(log)
+			}
+
+			// Execute the transaction's call.
+			ret, st.gasRemaining, vmerr = st.evm.Call(msg.From, st.to(), msg.Data, st.gasRemaining, value)
+
+		default:
+			// Execute the transaction's call.
+			ret, st.gasRemaining, vmerr = st.evm.Call(msg.From, st.to(), msg.Data, st.gasRemaining, value)
+
+		}
+
 	}
 
 	// OP-Stack: pre-Regolith: if deposit, skip refunds, skip tipping coinbase

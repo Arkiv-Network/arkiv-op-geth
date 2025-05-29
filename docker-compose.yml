@@ -1,0 +1,138 @@
+services:
+  setup:
+    image: alpine:latest
+    volumes:
+      - mongodb_keyfile:/mongodb-keyfile
+    command: >
+      /bin/sh -c "
+      mkdir -p /mongodb-keyfile;
+      if [ ! -f /mongodb-keyfile/mongodb-keyfile ]; then
+          echo 'ThisIsA32ByteKeyForMongoDBReplSet' > /mongodb-keyfile/mongodb-keyfile;
+          chmod 400 /mongodb-keyfile/mongodb-keyfile;
+          chown 999:999 /mongodb-keyfile/mongodb-keyfile;
+      fi;
+      echo 'MongoDB keyfile initialized'
+      "
+
+  op-geth:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8545:8545"
+    volumes:
+      - golembase_wal:/golembase.wal
+      - geth_data:/geth_data
+    command: >
+      --dev 
+      --http 
+      --http.api 'eth,web3,net,debug,golembase' 
+      --verbosity 3 
+      --http.addr '0.0.0.0' 
+      --http.port 8545 
+      --http.corsdomain '*' 
+      --http.vhosts '*' 
+      --ws 
+      --ws.addr '0.0.0.0' 
+      --ws.port 8545 
+      --golembase.writeaheadlog '/golembase.wal/'
+      --datadir '/geth_data'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8545"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+
+  mongodb:
+    image : mongo:8.0.6
+    container_name: mongodb
+    hostname: mongodb
+    restart: on-failure
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+      - MONGO_REPLICA_SET_NAME=rs0
+    ports:
+      - 27017:27017
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: |
+         echo "try { rs.status() } catch (err) { rs.initiate({_id:'rs0',members:[{_id:0,host:'host.docker.internal:27017'}]}) }" | mongosh "mongodb://admin:password@mongodb:27017/admin?authSource=admin"
+      interval: 10s
+      start_period: 30s
+    command: "--bind_ip_all --keyFile /keyfile/mongodb-keyfile --replSet rs0 --dbpath /data/db"
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+    volumes:
+      - mongodb_keyfile:/keyfile:ro
+      - mongodb_data:/data/db
+
+  mongodb-etl:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      # mongodb-init:
+      #   condition: service_completed_successfully
+      mongodb:
+        condition: service_healthy
+      op-geth:
+        condition: service_healthy
+    volumes:
+      - golembase_wal:/golembase.wal
+    environment:
+      - MONGO_URI=mongodb://admin:password@mongodb:27017
+      - WAL_PATH=/golembase.wal
+      - RPC_ENDPOINT=http://op-geth:8545
+      - DB_NAME=golembase
+    entrypoint: []
+    command: >
+      /usr/local/bin/mongodb
+      --wal /golembase.wal 
+      --mongo-uri mongodb://admin:password@mongodb:27017 
+      --rpc-endpoint http://op-geth:8545 
+      --db-name golembase
+
+  sqlite-etl:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      op-geth:
+        condition: service_healthy
+    volumes:
+      - golembase_wal:/golembase.wal
+      - golembase_sqlite:/golembase-sqlite
+    environment:
+      - RPC_ENDPOINT=http://op-geth:8545
+      - WAL_PATH=/tmp/golembase.wal
+      - DB_PATH=/tmp/golembase-sqlite
+    entrypoint: []
+    command: >
+      /usr/local/bin/sqlite
+      --wal /golembase.wal 
+      --db /golembase-sqlite/db
+      --rpc-endpoint http://op-geth:8545
+
+  rpcplorer:
+    image: dmilhdef/rpcplorer:v0.0.1
+    depends_on:
+      op-geth:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_URL=http://op-geth:8545
+    restart: on-failure 
+
+volumes:
+  mongodb_keyfile:
+  mongodb_data:
+  golembase_wal:
+  golembase_sqlite:
+  geth_data:

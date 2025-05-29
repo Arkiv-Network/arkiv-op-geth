@@ -147,6 +147,21 @@ func (miner *Miner) generateWork(params *generateParams, witness bool) *newPaylo
 
 	misc.EnsureCreate2Deployer(miner.chainConfig, work.header.Time, work.state)
 
+	// If there are no transactions, add a housekeeping transaction.
+	// This is for the case we're running geth in dev mode wihtout op-node running.
+	if len(params.txs) == 0 {
+		params.txs = types.Transactions{
+			types.NewTx(&types.DepositTx{
+				// System address
+				From:  common.HexToAddress("0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAd0001"),
+				To:    &types.L1BlockAddr,
+				Value: big.NewInt(0),
+				Gas:   1000000,
+				Data:  []byte{},
+			}),
+		}
+	}
+
 	for _, tx := range params.txs {
 		from, _ := types.Sender(work.signer, tx)
 		work.state.SetTxContext(tx.Hash(), work.tcount)
@@ -480,6 +495,7 @@ func (miner *Miner) commitTransactions(env *environment, plainTxs, blobTxs *tran
 	if env.gasPool == nil {
 		env.gasPool = new(core.GasPool).AddGas(gasLimit)
 	}
+
 	blockDABytes := new(big.Int)
 	for {
 		// Check interruption signal and abort building if it's fired.

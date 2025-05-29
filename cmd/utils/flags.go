@@ -45,6 +45,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/txpool/blobpool"
 	"github.com/ethereum/go-ethereum/core/txpool/legacypool"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
@@ -57,6 +58,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/ethdb/remotedb"
 	"github.com/ethereum/go-ethereum/ethstats"
+	"github.com/ethereum/go-ethereum/golem-base/wal"
 	"github.com/ethereum/go-ethereum/graphql"
 	"github.com/ethereum/go-ethereum/internal/ethapi"
 	"github.com/ethereum/go-ethereum/internal/flags"
@@ -895,6 +897,13 @@ var (
 		Category: flags.NetworkingCategory,
 	}
 
+	// Golem Base Settings
+	GolemBaseWriteAheadLogDir = &flags.DirectoryFlag{
+		Name:     "golembase.writeaheadlog",
+		Usage:    "Path to the write-ahead log directory for the Golem Base",
+		Category: flags.MiscCategory,
+	}
+
 	// Console
 	JSpathFlag = &flags.DirectoryFlag{
 		Name:     "jspath",
@@ -1558,6 +1567,21 @@ func SetNodeConfig(ctx *cli.Context, cfg *node.Config) {
 		log.Info(fmt.Sprintf("Using %s as db engine", dbEngine))
 		cfg.DBEngine = dbEngine
 	}
+
+	if ctx.IsSet(GolemBaseWriteAheadLogDir.Name) {
+
+		_, err := os.Stat(GolemBaseWriteAheadLogDir.Value.String())
+
+		if errors.Is(err, os.ErrNotExist) {
+			err = os.MkdirAll(GolemBaseWriteAheadLogDir.Value.String(), 0755)
+			if err != nil {
+				Fatalf("Failed to create write-ahead log directory: %v", err)
+			}
+		}
+
+		cfg.GolemBaseWriteAheadLogDir = ctx.String(GolemBaseWriteAheadLogDir.Name)
+	}
+
 	// deprecation notice for log debug flags (TODO: find a more appropriate place to put these?)
 	if ctx.IsSet(LogBacktraceAtFlag.Name) {
 		log.Warn("log.backtrace flag is deprecated")
@@ -2453,6 +2477,18 @@ func MakeChain(ctx *cli.Context, stack *node.Node, readonly bool) (*core.BlockCh
 			vmcfg.Tracer = t
 		}
 	}
+
+	walDir := stack.Config().GolemBaseWriteAheadLogDir
+	if walDir != "" {
+		chain, err := core.NewBlockChainWithOnNewBlock(chainDb, cache, gspec, nil, engine, vmcfg, nil, func(block *types.Block, receipts []*types.Receipt) error {
+			return wal.WriteLogForBlock(walDir, block, config.ChainID, receipts)
+		})
+		if err != nil {
+			Fatalf("Can't create BlockChain with onNewBlock: %v", err)
+		}
+		return chain, chainDb
+	}
+
 	// Disable transaction indexing/unindexing by default.
 	chain, err := core.NewBlockChain(chainDb, cache, gspec, nil, engine, vmcfg, nil)
 	if err != nil {
