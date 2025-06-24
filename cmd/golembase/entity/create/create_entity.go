@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/cmd/golembase/account/pkg/useraccount"
@@ -16,6 +18,61 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/urfave/cli/v2"
 )
+
+// To supply string annotations, provide separate --string
+// flags for each annotation. After each flag, pass the
+// pair as key:value (separated by a colon).
+// Example:
+// --string hello:world --string foo:bar
+// to provide two annotations, hello:world and foo:bar.
+
+func ParseStringAnnotations(input []string) ([]entity.StringAnnotation, error) {
+	var annotations []entity.StringAnnotation
+
+	for _, pair := range input {
+		kv := strings.SplitN(pair, ":", 2)
+		if len(kv) != 2 {
+			return nil, fmt.Errorf("invalid annotation pair: %q", pair)
+		}
+		annotations = append(annotations, entity.StringAnnotation{
+			Key:   strings.TrimSpace(kv[0]),
+			Value: strings.TrimSpace(kv[1]),
+		})
+	}
+
+	return annotations, nil
+}
+
+// To supply numeric annotations, provide separate --num
+// flags for each annotation. After each flag, pass the
+// pair as key:value (separated by a colon).
+// Example:
+// --num favorite:100 --num count:10
+// to provide two annotations, favorite:100 and count:10.
+func ParseNumericAnnotations(input []string) ([]entity.NumericAnnotation, error) {
+	var annotations []entity.NumericAnnotation
+
+	for _, pair := range input {
+		kv := strings.SplitN(pair, ":", 2)
+		if len(kv) != 2 {
+			continue
+		}
+		key := strings.TrimSpace(kv[0])
+		valStr := strings.TrimSpace(kv[1])
+
+		val, err := strconv.ParseUint(valStr, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid value for key %q: %v", key, err)
+		}
+
+		annotations = append(annotations, entity.NumericAnnotation{
+			Key:   key,
+			Value: val,
+		})
+	}
+
+	return annotations, nil
+}
 
 func Create() *cli.Command {
 
@@ -49,6 +106,16 @@ func Create() *cli.Command {
 				EnvVars:     []string{"ENTITY_BTL"},
 				Destination: &cfg.btl,
 			},
+			&cli.StringSliceFlag{
+				Name:    "string",
+				Aliases: []string{"s"},
+				Usage:   "Key/Value for string annotation. Specify as foo:bar. Pass multiple instances of --string as needed",
+			},
+			&cli.StringSliceFlag{
+				Name:    "num",
+				Aliases: []string{"n"},
+				Usage:   "Key/Value for numeric annotation. Specify as favorite:100. Pass multiple instances of --num as needed",
+			},
 		},
 		Action: func(c *cli.Context) error {
 
@@ -79,18 +146,25 @@ func Create() *cli.Command {
 				return fmt.Errorf("failed to get nonce: %w", err)
 			}
 
+			strs, err := ParseStringAnnotations(c.StringSlice("string"))
+			if err != nil {
+				return fmt.Errorf("failed to parse string annotations: %w", err)
+			}
+
+			nums, err := ParseNumericAnnotations(c.StringSlice("num"))
+			if err != nil {
+				return fmt.Errorf("failed to parse numeric annotations: %w", err)
+			}
+
 			// Create the storage transaction
 			storageTx := &storagetx.StorageTransaction{
 				Create: []storagetx.Create{
 					{
 						BTL:     cfg.btl,
 						Payload: []byte(c.String("data")),
-						StringAnnotations: []entity.StringAnnotation{
-							{
-								Key:   "foo",
-								Value: "bar",
-							},
-						},
+
+						StringAnnotations:  strs,
+						NumericAnnotations: nums,
 					},
 				},
 			}
