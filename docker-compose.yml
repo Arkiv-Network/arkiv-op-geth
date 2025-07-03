@@ -23,6 +23,7 @@ services:
     volumes:
       - golembase_wal:/golembase.wal
       - geth_data:/geth_data
+      - ~/golembase_config:/root/.config/golembase
     command: >
       --dev 
       --http 

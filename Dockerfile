@@ -15,6 +15,7 @@ RUN cd /go-ethereum && go mod download
 
 ADD . /go-ethereum
 RUN --mount=type=cache,target=/root/.cache/go-build cd /go-ethereum && go run build/ci.go install -static ./cmd/geth
+RUN --mount=type=cache,target=/root/.cache/go-build cd /go-ethereum && go run build/ci.go install -static ./cmd/golembase
 RUN --mount=type=cache,target=/root/.cache/go-build cd /go-ethereum && go run build/ci.go install -static ./golem-base/etl/mongodb
 RUN --mount=type=cache,target=/root/.cache/go-build cd /go-ethereum && go run build/ci.go install -static ./golem-base/etl/sqlite
 
@@ -23,6 +24,7 @@ FROM alpine:latest
 
 RUN apk add --no-cache ca-certificates curl
 COPY --from=builder /go-ethereum/build/bin/geth /usr/local/bin/
+COPY --from=builder /go-ethereum/build/bin/golembase /usr/local/bin/
 COPY --from=builder /go-ethereum/build/bin/mongodb /usr/local/bin/
 COPY --from=builder /go-ethereum/build/bin/sqlite /usr/local/bin/
 
