@@ -157,7 +157,7 @@ func (miner *Miner) generateWork(params *generateParams, witness bool) *newPaylo
 				To:    &types.L1BlockAddr,
 				Value: big.NewInt(0),
 				Gas:   1000000,
-				Data:  []byte{},
+				Data:  big.NewInt(int64(work.header.Number.Uint64())).Bytes(),
 			}),
 		}
 	}
