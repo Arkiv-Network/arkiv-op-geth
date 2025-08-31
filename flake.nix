@@ -1,7 +1,7 @@
 {
   description = "Golem Base L3 Store Prototype";
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+    nixpkgs.url = "https://channels.nixos.org/nixos-unstable/nixexprs.tar.xz";
 
     systems.url = "github:nix-systems/default";
 
@@ -12,20 +12,17 @@
   };
 
   outputs =
-    {
-      self,
-      nixpkgs,
-      systems,
-      rpcplorer,
-      ...
-    }@inputs:
+    inputs:
     let
-      eachSystem = f: nixpkgs.lib.genAttrs (import systems) (system: f system nixpkgs.legacyPackages.${system});
+      eachSystem =
+        f:
+        inputs.nixpkgs.lib.genAttrs (import inputs.systems) (
+          system: f system inputs.nixpkgs.legacyPackages.${system}
+        );
     in
     {
       packages = eachSystem (
-        _system:
-        pkgs:
+        _system: pkgs:
         let
           inherit (pkgs) lib;
         in
@@ -65,30 +62,36 @@
         }
       );
 
-      devShells = eachSystem (system: pkgs: {
-        default = pkgs.mkShell {
-          shellHook = ''
-            # Set here the env vars you want to be available in the shell
-          '';
-          hardeningDisable = [ "all" ];
+      devShells = eachSystem (
+        system: pkgs: {
+          default = pkgs.mkShell {
+            shellHook = ''
+              # Set here the env vars you want to be available in the shell
+            '';
+            hardeningDisable = [ "all" ];
 
-          packages = with pkgs; [
-            go
-            go-tools # staticccheck
-            gopls # lsp
-            gotools # goimports, ...
-            shellcheck
-            sqlc
-            sqlite
-            overmind
-            mongosh
-            openssl
-            goreleaser
-          ] ++ lib.optional pkgs.stdenv.hostPlatform.isLinux [
-            # For podman networking
-            slirp4netns
-          ] ++ [ rpcplorer.packages.${system}.default ] ;
-        };
-      });
+            packages =
+              with pkgs;
+              [
+                go
+                go-tools # staticccheck
+                gopls # lsp
+                gotools # goimports, ...
+                shellcheck
+                sqlc
+                sqlite
+                overmind
+                mongosh
+                openssl
+                goreleaser
+              ]
+              ++ lib.optional pkgs.stdenv.hostPlatform.isLinux [
+                # For podman networking
+                slirp4netns
+              ]
+              ++ [ inputs.rpcplorer.packages.${system}.default ];
+          };
+        }
+      );
     };
 }
