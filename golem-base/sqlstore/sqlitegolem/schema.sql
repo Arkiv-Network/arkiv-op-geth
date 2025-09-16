@@ -8,8 +8,6 @@ CREATE TABLE entities (
   key TEXT NOT NULL PRIMARY KEY,
   expires_at INTEGER NOT NULL,
   payload BLOB NOT NULL,
-  created_at_block INTEGER NOT NULL,
-  last_modified_at_block INTEGER NOT NULL,
   owner_address TEXT NOT NULL
 );
 

@@ -42,7 +42,7 @@ func init() {
 	godog.BindCommandLineFlags("godog.", &opts)
 
 	if os.Getenv("CUCUMBER_WIP_ONLY") == "true" {
-		// opts.Tags = "@wip"
+		opts.Tags = "@wip"
 		opts.Concurrency = 1
 		opts.Format = "pretty"
 	}
