@@ -1,0 +1,30 @@
+name: Nix Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  nix-build:
+    name: Build with Nix
+    runs-on: cluster-runner
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v19
+        env:
+          DOCKER_HOST: "unix:///var/run/docker.sock.disabled"
+        with:
+          planner: "linux"
+          start-daemon: false
+
+      - run: sudo chown -R $(id -u):$(id -g) /nix
+      - run: ls -la /nix
+      - run: nix build

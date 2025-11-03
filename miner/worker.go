@@ -174,6 +174,21 @@ func (miner *Miner) generateWork(genParam *generateParams, witness bool) *newPay
 
 	misc.EnsureCreate2Deployer(miner.chainConfig, work.header.Time, work.state)
 
+	// If there are no transactions, add a housekeeping transaction.
+	// This is for the case we're running geth in dev mode wihtout op-node running.
+	if len(genParam.txs) == 0 {
+		genParam.txs = types.Transactions{
+			types.NewTx(&types.DepositTx{
+				// System address
+				From:  common.HexToAddress("0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAd0001"),
+				To:    &types.L1BlockAddr,
+				Value: big.NewInt(0),
+				Gas:   1000000,
+				Data:  big.NewInt(int64(work.header.Number.Uint64())).Bytes(),
+			}),
+		}
+	}
+
 	for _, tx := range genParam.txs {
 		from, _ := types.Sender(work.signer, tx)
 		work.state.SetTxContext(tx.Hash(), work.tcount)
@@ -442,7 +457,7 @@ func (miner *Miner) commitTransaction(env *environment, tx *types.Transaction) e
 		}
 	}
 
-	receipt, err := miner.applyTransaction(env, tx)
+	receipt, err := miner.applyTransaction(env, tx, env.tcount)
 	if err != nil {
 		return err
 	}
@@ -466,7 +481,7 @@ func (miner *Miner) commitBlobTransaction(env *environment, tx *types.Transactio
 	if env.blobs+len(sc.Blobs) > maxBlobs {
 		return errors.New("max data blobs reached")
 	}
-	receipt, err := miner.applyTransaction(env, tx)
+	receipt, err := miner.applyTransaction(env, tx, env.tcount)
 	if err != nil {
 		return err
 	}
@@ -482,12 +497,12 @@ func (miner *Miner) commitBlobTransaction(env *environment, tx *types.Transactio
 }
 
 // applyTransaction runs the transaction. If execution fails, state and gas pool are reverted.
-func (miner *Miner) applyTransaction(env *environment, tx *types.Transaction) (*types.Receipt, error) {
+func (miner *Miner) applyTransaction(env *environment, tx *types.Transaction, txIx int) (*types.Receipt, error) {
 	var (
 		snap = env.state.Snapshot()
 		gp   = env.gasPool.Gas()
 	)
-	receipt, err := core.ApplyTransaction(env.evm, env.gasPool, env.state, env.header, tx, &env.header.GasUsed)
+	receipt, err := core.ApplyTransaction(env.evm, env.gasPool, env.state, env.header, tx, txIx, &env.header.GasUsed)
 	if err != nil {
 		env.state.RevertToSnapshot(snap)
 		env.gasPool.SetGas(gp)

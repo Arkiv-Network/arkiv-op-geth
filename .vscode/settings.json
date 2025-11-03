@@ -1,0 +1,8 @@
+{
+    "go.testEnvVars": {
+        "CUCUMBER_WIP_ONLY": "true"
+    },
+    "yaml.schemas": {
+        "https://json.schemastore.org/github-workflow.json": "file:///Users/dragan/golem/op-geth/.github/workflows/goreleaser.yml"
+    }
+}

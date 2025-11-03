@@ -38,6 +38,7 @@ import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/filtermaps"
 	"github.com/ethereum/go-ethereum/core/rawdb"
+	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/state/pruner"
 	"github.com/ethereum/go-ethereum/core/txpool"
 	"github.com/ethereum/go-ethereum/core/txpool/blobpool"
@@ -54,6 +55,7 @@ import (
 	"github.com/ethereum/go-ethereum/eth/tracers"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/event"
+	"github.com/ethereum/go-ethereum/golem-base/sqlstore"
 	"github.com/ethereum/go-ethereum/internal/ethapi"
 	"github.com/ethereum/go-ethereum/internal/sequencerapi"
 	"github.com/ethereum/go-ethereum/internal/shutdowncheck"
@@ -278,6 +280,7 @@ func New(stack *node.Node, config *ethconfig.Config) (*Ethereum, error) {
 	if config.OverrideVerkle != nil {
 		overrides.OverrideVerkle = config.OverrideVerkle
 	}
+
 	if config.OverrideOptimismCanyon != nil {
 		overrides.OverrideOptimismCanyon = config.OverrideOptimismCanyon
 	}
@@ -305,7 +308,37 @@ func New(stack *node.Node, config *ethconfig.Config) (*Ethereum, error) {
 	overrides.ApplySuperchainUpgrades = config.ApplySuperchainUpgrades
 	options.Overrides = &overrides
 
-	eth.blockchain, err = core.NewBlockChain(chainDb, config.Genesis, eth.engine, options)
+	// eth.blockchain, err = core.NewBlockChain(chainDb, config.Genesis, eth.engine, options)
+	log.Info("Creating SQLStore", "path", stack.Config().GolemBaseSQLStateFile)
+	sqlStateFile := stack.Config().GolemBaseSQLStateFile
+
+	if sqlStateFile == "" {
+		sqlStateFile = ":memory:"
+	}
+
+	st, err := sqlstore.NewStore(
+		stack.Config().GolemBaseSQLStateFile,
+		stack.Config().ArkivHistoricBlocksFlag,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create SQLStore: %w", err)
+	}
+
+	onNewBlock := func(db *state.CachingDB, hc *core.HeaderChain, chainID *big.Int, block *types.Block, receipts []*types.Receipt) error {
+		if sqlStateFile == ":memory:" {
+			return nil
+		}
+		return sqlstore.WriteLogForBlockSqlite(
+			st,
+			db,
+			hc,
+			block,
+			chainID,
+			receipts,
+		)
+	}
+
+	eth.blockchain, err = core.NewBlockChainWithOnNewBlock(chainDb, config.Genesis, eth.engine, options, onNewBlock)
 	if err != nil {
 		return nil, err
 	}
@@ -436,6 +469,18 @@ func New(stack *node.Node, config *ethconfig.Config) (*Ethereum, error) {
 	eth.netRPCService = ethapi.NewNetAPI(eth.p2pServer, networkID)
 
 	// Register the backend on the node
+	stack.RegisterAPIs([]rpc.API{
+		{
+			Namespace: "golembase",
+			Service:   NewGolemBaseAPI(eth, st),
+		},
+	})
+	stack.RegisterAPIs([]rpc.API{
+		{
+			Namespace: "arkiv",
+			Service:   NewArkivAPI(eth, st),
+		},
+	})
 	stack.RegisterAPIs(eth.APIs())
 	stack.RegisterProtocols(eth.Protocols())
 	stack.RegisterLifecycle(eth)

@@ -27,6 +27,8 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/golem-base/address"
+	"github.com/ethereum/go-ethereum/golem-base/storagetx"
 	"github.com/ethereum/go-ethereum/params"
 )
 
@@ -91,13 +93,13 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 
 	// Iterate over and process the individual transactions
 	for i, tx := range block.Transactions() {
-		msg, err := TransactionToMessage(tx, signer, header.BaseFee)
+		msg, err := TransactionToMessage(tx, signer, header.BaseFee, header.Number.Uint64())
 		if err != nil {
 			return nil, fmt.Errorf("could not apply tx %d [%v]: %w", i, tx.Hash().Hex(), err)
 		}
 		statedb.SetTxContext(tx.Hash(), i)
 
-		receipt, err := ApplyTransactionWithEVM(msg, gp, statedb, blockNumber, blockHash, context.Time, tx, usedGas, evm)
+		receipt, err := ApplyTransactionWithEVM(msg, gp, statedb, blockNumber, blockHash, context.Time, tx, i, usedGas, evm)
 		if err != nil {
 			return nil, fmt.Errorf("could not apply tx %d [%v]: %w", i, tx.Hash().Hex(), err)
 		}
@@ -143,12 +145,116 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 // ApplyTransactionWithEVM attempts to apply a transaction to the given state database
 // and uses the input parameters for its environment similar to ApplyTransaction. However,
 // this method takes an already created EVM instance as input.
-func ApplyTransactionWithEVM(msg *Message, gp *GasPool, statedb *state.StateDB, blockNumber *big.Int, blockHash common.Hash, blockTime uint64, tx *types.Transaction, usedGas *uint64, evm *vm.EVM) (receipt *types.Receipt, err error) {
+
+func ApplyTransactionWithEVM(msg *Message, gp *GasPool, statedb *state.StateDB, blockNumber *big.Int, blockHash common.Hash, blockTime uint64, tx *types.Transaction, txIx int, usedGas *uint64, evm *vm.EVM) (receipt *types.Receipt, err error) {
+
 	if hooks := evm.Config.Tracer; hooks != nil {
+
+		if tx.To() != nil && *tx.To() == address.GolemBaseStorageProcessorAddress {
+
+			logs, err := storagetx.ExecuteTransaction(
+				tx.Data(),
+				blockNumber.Uint64(),
+				blockHash,
+				txIx,
+				msg.From,
+				statedb,
+			)
+
+			status := types.ReceiptStatusSuccessful
+			if err != nil {
+				status = types.ReceiptStatusFailed
+			}
+
+			fakeReceipt := &types.Receipt{
+				GasUsed:     0,
+				Logs:        logs,
+				TxHash:      tx.Hash(),
+				Status:      status,
+				Bloom:       types.Bloom{},
+				BlockHash:   blockHash,
+				BlockNumber: blockNumber,
+			}
+
+			if hooks.OnTxStart != nil {
+				hooks.OnTxStart(evm.GetVMContext(), tx, msg.From)
+			}
+
+			if hooks.OnEnter != nil {
+				hooks.OnEnter(0, byte(vm.CALL), msg.From, address.GolemBaseStorageProcessorAddress, tx.Data(), tx.Gas(), msg.Value)
+			}
+
+			if hooks.OnLog != nil {
+				for _, log := range fakeReceipt.Logs {
+					hooks.OnLog(log)
+				}
+			}
+
+			if hooks.OnExit != nil {
+				hooks.OnExit(0, []byte{}, 0, nil, false)
+			}
+
+			if hooks.OnTxEnd != nil {
+				hooks.OnTxEnd(fakeReceipt, nil)
+			}
+			return fakeReceipt, nil
+		}
+
+		if tx.To() != nil && *tx.To() == address.ArkivProcessorAddress {
+
+			logs, err := storagetx.ExecuteArkivTransaction(
+				tx.Data(),
+				blockNumber.Uint64(),
+				blockHash,
+				txIx,
+				msg.From,
+				statedb,
+			)
+
+			status := types.ReceiptStatusSuccessful
+			if err != nil {
+				status = types.ReceiptStatusFailed
+			}
+
+			fakeReceipt := &types.Receipt{
+				GasUsed:     0,
+				Logs:        logs,
+				TxHash:      tx.Hash(),
+				Status:      status,
+				Bloom:       types.Bloom{},
+				BlockHash:   blockHash,
+				BlockNumber: blockNumber,
+			}
+
+			if hooks.OnTxStart != nil {
+				hooks.OnTxStart(evm.GetVMContext(), tx, msg.From)
+			}
+
+			if hooks.OnEnter != nil {
+				hooks.OnEnter(0, byte(vm.CALL), msg.From, address.ArkivProcessorAddress, tx.Data(), tx.Gas(), msg.Value)
+			}
+
+			if hooks.OnLog != nil {
+				for _, log := range fakeReceipt.Logs {
+					hooks.OnLog(log)
+				}
+			}
+
+			if hooks.OnExit != nil {
+				hooks.OnExit(0, []byte{}, 0, nil, false)
+			}
+
+			if hooks.OnTxEnd != nil {
+				hooks.OnTxEnd(fakeReceipt, nil)
+			}
+			return fakeReceipt, nil
+		}
+
 		if hooks.OnTxStart != nil {
 			hooks.OnTxStart(evm.GetVMContext(), tx, msg.From)
 		}
 		if hooks.OnTxEnd != nil {
+			// fmt.Println("OnTxEnd", receipt, err)
 			defer func() { hooks.OnTxEnd(receipt, err) }()
 		}
 	}
@@ -159,7 +265,7 @@ func ApplyTransactionWithEVM(msg *Message, gp *GasPool, statedb *state.StateDB, 
 	}
 
 	// Apply the transaction to the current state (included in the env).
-	result, err := ApplyMessage(evm, msg, gp)
+	result, err := ApplyMessageWithIndex(evm, msg, gp, txIx)
 	if err != nil {
 		return nil, err
 	}
@@ -227,13 +333,13 @@ func MakeReceipt(evm *vm.EVM, result *ExecutionResult, statedb *state.StateDB, b
 // and uses the input parameters for its environment. It returns the receipt
 // for the transaction, gas used and an error if the transaction failed,
 // indicating the block was invalid.
-func ApplyTransaction(evm *vm.EVM, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *uint64) (*types.Receipt, error) {
-	msg, err := TransactionToMessage(tx, types.MakeSigner(evm.ChainConfig(), header.Number, header.Time), header.BaseFee)
+func ApplyTransaction(evm *vm.EVM, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, txIx int, usedGas *uint64) (*types.Receipt, error) {
+	msg, err := TransactionToMessage(tx, types.MakeSigner(evm.ChainConfig(), header.Number, header.Time), header.BaseFee, header.Number.Uint64())
 	if err != nil {
 		return nil, err
 	}
 	// Create a new context to be used in the EVM environment
-	return ApplyTransactionWithEVM(msg, gp, statedb, header.Number, header.Hash(), header.Time, tx, usedGas, evm)
+	return ApplyTransactionWithEVM(msg, gp, statedb, header.Number, header.Hash(), header.Time, tx, txIx, usedGas, evm)
 }
 
 // ProcessBeaconBlockRoot applies the EIP-4788 system call to the beacon block root

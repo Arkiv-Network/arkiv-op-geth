@@ -194,6 +194,7 @@ func (c *callback) call(ctx context.Context, method string, args []reflect.Value
 	// Catch panic while running the callback.
 	defer func() {
 		if err := recover(); err != nil {
+			log.Error("RPC method crashed", "method", method, "error", err)
 			const size = 64 << 10
 			buf := make([]byte, size)
 			buf = buf[:runtime.Stack(buf, false)]

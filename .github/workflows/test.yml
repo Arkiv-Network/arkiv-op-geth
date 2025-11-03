@@ -1,0 +1,28 @@
+name: Run tests
+
+on:
+  push:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  test:
+    runs-on: 
+      group: Default
+      labels: cluster-runner
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v19
+        env:
+          DOCKER_HOST: "unix:///var/run/docker.sock.disabled"
+        with:
+          planner: "linux"
+          start-daemon: false
+      - run: sudo chown -R $(id -u):$(id -g) /nix
+      - name: Run tests
+        # Some tests fail on the self-hosted runner, but because they're not relevant to our work, we disable them.
+        run: |
+          nix develop --command go test -short -count=1 -skip "UPNP|PathExpansion|TestUDPv4_findnode" ./...
+

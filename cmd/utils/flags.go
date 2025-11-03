@@ -43,8 +43,10 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/rawdb"
+	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/txpool/blobpool"
 	"github.com/ethereum/go-ethereum/core/txpool/legacypool"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
@@ -57,6 +59,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/ethdb/remotedb"
 	"github.com/ethereum/go-ethereum/ethstats"
+	"github.com/ethereum/go-ethereum/golem-base/sqlstore"
 	"github.com/ethereum/go-ethereum/graphql"
 	"github.com/ethereum/go-ethereum/internal/ethapi"
 	"github.com/ethereum/go-ethereum/internal/flags"
@@ -489,6 +492,12 @@ var (
 		Value:    0,
 		Category: flags.TxPoolCategory,
 	}
+	TxPoolDisableNonGolemBaseTransactions = &cli.BoolFlag{
+		Name:     "txpool.disable.non.golembase.transactions",
+		Usage:    "Maximum amount of time non-executable transaction are queued",
+		Value:    ethconfig.Defaults.TxPool.DisableNonGolemBaseTransactions,
+		Category: flags.TxPoolCategory,
+	}
 	// Blob transaction pool settings
 	BlobPoolDataDirFlag = &cli.StringFlag{
 		Name:     "blobpool.datadir",
@@ -904,6 +913,19 @@ var (
 		Usage:    "Use a custom UDP port for P2P discovery",
 		Value:    30303,
 		Category: flags.NetworkingCategory,
+	}
+
+	// Golem Base Settings
+	GolemBaseSQLStateFile = &cli.PathFlag{
+		Name:     "golembase.sqlstatefile",
+		Usage:    "Path to the SQL state file for the Golem Base",
+		Category: flags.MiscCategory,
+	}
+	ArkivHistoricBlocksFlag = &cli.Uint64Flag{
+		Name:     "arkiv.history.blocks",
+		Usage:    "Number of blocks to retain in the Arkiv state, 0 means full history",
+		Category: flags.MiscCategory,
+		Value:    128,
 	}
 
 	// Console
@@ -1554,6 +1576,19 @@ func SetNodeConfig(ctx *cli.Context, cfg *node.Config) {
 		log.Info(fmt.Sprintf("Using %s as db engine", dbEngine))
 		cfg.DBEngine = dbEngine
 	}
+
+	cfg.GolemBaseSQLStateFile = filepath.Join(cfg.DataDir, "golem-base.db")
+
+	if ctx.IsSet(GolemBaseSQLStateFile.Name) {
+		cfg.GolemBaseSQLStateFile = ctx.String(GolemBaseSQLStateFile.Name)
+	}
+
+	if ctx.IsSet(ArkivHistoricBlocksFlag.Name) {
+		cfg.ArkivHistoricBlocksFlag = ctx.Uint64(ArkivHistoricBlocksFlag.Name)
+	} else {
+		cfg.ArkivHistoricBlocksFlag = ArkivHistoricBlocksFlag.Value
+	}
+
 	// deprecation notice for log debug flags (TODO: find a more appropriate place to put these?)
 	if ctx.IsSet(LogBacktraceAtFlag.Name) {
 		log.Warn("Option --log.backtrace flag is deprecated")
@@ -1661,6 +1696,9 @@ func setTxPool(ctx *cli.Context, cfg *legacypool.Config) {
 	}
 	if ctx.IsSet(TxPoolLifetimeFlag.Name) {
 		cfg.Lifetime = ctx.Duration(TxPoolLifetimeFlag.Name)
+	}
+	if ctx.IsSet(TxPoolDisableNonGolemBaseTransactions.Name) {
+		cfg.DisableNonGolemBaseTransactions = ctx.Bool(TxPoolDisableNonGolemBaseTransactions.Name)
 	}
 	if ctx.IsSet(MinerEffectiveGasLimitFlag.Name) {
 		// While technically this is a miner config parameter, we also want the txpool to enforce
@@ -2465,12 +2503,30 @@ func MakeChain(ctx *cli.Context, stack *node.Node, readonly bool) (*core.BlockCh
 	}
 	options.VmConfig = vmcfg
 
-	chain, err := core.NewBlockChain(chainDb, gspec, engine, options)
+	log.Info("Creating SQLStore", "path", stack.Config().GolemBaseSQLStateFile)
+	st, err := sqlstore.NewStore(
+		stack.Config().GolemBaseSQLStateFile,
+		stack.Config().ArkivHistoricBlocksFlag,
+	)
 	if err != nil {
-		Fatalf("Can't create BlockChain: %v", err)
+		Fatalf("failed to create SQLStore: %v", err)
 	}
 
+	chain, err := core.NewBlockChainWithOnNewBlock(chainDb, gspec, engine, options, func(db *state.CachingDB, hc *core.HeaderChain, chainID *big.Int, block *types.Block, receipts []*types.Receipt) error {
+		return sqlstore.WriteLogForBlockSqlite(
+			st,
+			db,
+			hc,
+			block,
+			config.ChainID,
+			receipts,
+		)
+	})
+	if err != nil {
+		Fatalf("Can't create BlockChain with onNewBlock: %v", err)
+	}
 	return chain, chainDb
+
 }
 
 // MakeConsolePreloads retrieves the absolute paths for the console JavaScript

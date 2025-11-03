@@ -1,0 +1,43 @@
+services:
+
+  op-geth:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8545:8545"
+    volumes:
+      - geth_data:/geth_data
+      - ~/golembase_config:/root/.config/golembase
+    command: >
+      --dev 
+      --http 
+      --http.api 'eth,web3,net,debug,golembase' 
+      --verbosity 3 
+      --http.addr '0.0.0.0' 
+      --http.port 8545 
+      --http.corsdomain '*' 
+      --http.vhosts '*' 
+      --ws 
+      --ws.addr '0.0.0.0' 
+      --ws.port 8545 
+      --datadir '/geth_data'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8545"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  rpcplorer:
+    image: dmilhdef/rpcplorer:v0.0.1
+    depends_on:
+      op-geth:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_URL=http://op-geth:8545
+    restart: on-failure 
+
+volumes:
+  geth_data:
