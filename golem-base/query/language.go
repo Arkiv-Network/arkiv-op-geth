@@ -32,12 +32,6 @@ type OrderBy struct {
 	Descending bool
 }
 
-// EncodedCursor is a type to encode the cursor in a small json document to avoid overhead
-type encodedCursor struct {
-	BlockNumber  uint64  `json:"b"`
-	ColumnValues [][]any `json:"v"`
-}
-
 func (opts *QueryOptions) GetColumnIndex(column string) (int, error) {
 	ix, found := slices.BinarySearch(opts.AllColumns(), column)
 
@@ -48,33 +42,34 @@ func (opts *QueryOptions) GetColumnIndex(column string) (int, error) {
 }
 
 func (opts *QueryOptions) EncodeCursor(cursor *arkivtype.Cursor) (string, error) {
-	encodedOffset := encodedCursor{
-		BlockNumber:  cursor.BlockNumber,
-		ColumnValues: make([][]any, 0, len(cursor.ColumnValues)),
-	}
+	encodedCursor := make([]any, 0, len(cursor.ColumnValues)*3+1)
+
+	encodedCursor = append(encodedCursor, cursor.BlockNumber)
 
 	for _, c := range cursor.ColumnValues {
 		columnIx, err := opts.GetColumnIndex(c.ColumnName)
 		if err != nil {
 			return "", err
 		}
-		descending := 0
+		descending := uint64(0)
 		if c.Descending {
 			descending = 1
 		}
-		encodedOffset.ColumnValues = append(encodedOffset.ColumnValues, []any{
-			columnIx, c.Value, descending,
-		})
+		encodedCursor = append(encodedCursor,
+			uint64(columnIx), c.Value, descending,
+		)
 	}
 
-	s, err := json.Marshal(encodedOffset)
+	s, err := json.Marshal(encodedCursor)
 	if err != nil {
-		return "", fmt.Errorf("could not marshal offset: %w", err)
+		return "", fmt.Errorf("could not marshal cursor: %w", err)
 	}
+	log.Info("Encoded cursor", "cursor", string(s))
 
-	log.Info("query response", "encoded_cursor", string(s))
+	hexCursor := hex.EncodeToString([]byte(s))
+	log.Info("Hex encoded cursor", "cursor", hexCursor)
 
-	return hex.EncodeToString([]byte(s)), nil
+	return hexCursor, nil
 }
 
 func (opts *QueryOptions) DecodeCursor(cursorStr string) (*arkivtype.Cursor, error) {
@@ -84,20 +79,27 @@ func (opts *QueryOptions) DecodeCursor(cursorStr string) (*arkivtype.Cursor, err
 
 	bs, err := hex.DecodeString(cursorStr)
 	if err != nil {
-		return nil, fmt.Errorf("could not decode offset: %w", err)
+		return nil, fmt.Errorf("could not decode cursor: %w", err)
 	}
 
-	encoded := encodedCursor{}
+	cursor := arkivtype.Cursor{}
+
+	encoded := make([]any, 0)
 	err = json.Unmarshal(bs, &encoded)
 	if err != nil {
-		return nil, fmt.Errorf("could not unmarshal offset: %w (%s)", err, string(bs))
+		return nil, fmt.Errorf("could not unmarshal cursor: %w (%s)", err, string(bs))
 	}
 
-	cursor := &arkivtype.Cursor{}
-	cursor.BlockNumber = encoded.BlockNumber
-	cursor.ColumnValues = make([]arkivtype.CursorValue, 0, len(encoded.ColumnValues))
+	firstValue, ok := encoded[0].(float64)
+	if !ok {
+		return nil, fmt.Errorf("invalid block number: %d", encoded[0])
+	}
+	blockNumber := uint64(firstValue)
+	cursor.BlockNumber = blockNumber
 
-	for _, c := range encoded.ColumnValues {
+	cursor.ColumnValues = make([]arkivtype.CursorValue, 0, len(encoded)-1)
+
+	for c := range slices.Chunk(encoded[1:], 3) {
 		if len(c) != 3 {
 			return nil, fmt.Errorf("invalid length of cursor array: %d", len(c))
 		}
@@ -140,7 +142,7 @@ func (opts *QueryOptions) DecodeCursor(cursorStr string) (*arkivtype.Cursor, err
 	}
 	log.Info("Decoded cursor", "cursor", string(jsonCursor))
 
-	return cursor, nil
+	return &cursor, nil
 }
 
 func (opts *QueryOptions) AllColumns() []string {

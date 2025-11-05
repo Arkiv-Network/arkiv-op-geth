@@ -32,10 +32,10 @@ type QueryOptions struct {
 	IncludeData    *IncludeData                  `json:"includeData"`
 	OrderBy        []arkivtype.OrderByAnnotation `json:"orderBy"`
 	ResultsPerPage uint64                        `json:"resultsPerPage"`
-	Cursor         *string                       `json:"cursor"`
+	Cursor         string                        `json:"cursor"`
 }
 
-var allColumns = []string{
+var defaultColumns = []string{
 	arkivtype.GetColumnOrPanic("key"),
 	arkivtype.GetColumnOrPanic("expires_at"),
 	arkivtype.GetColumnOrPanic("owner_address"),
@@ -47,12 +47,12 @@ func (options *QueryOptions) toInternalQueryOptions() (*internalQueryOptions, er
 	switch {
 	case options == nil:
 		return &internalQueryOptions{
-			Columns:            allColumns,
+			Columns:            defaultColumns,
 			IncludeAnnotations: true,
 		}, nil
 	case options.IncludeData == nil:
 		return &internalQueryOptions{
-			Columns:            allColumns,
+			Columns:            defaultColumns,
 			IncludeAnnotations: true,
 			OrderBy:            options.OrderBy,
 			AtBlock:            options.AtBlock,
@@ -101,7 +101,7 @@ type internalQueryOptions struct {
 	IncludeAnnotations bool                          `json:"includeAnnotations"`
 	Columns            []string                      `json:"columns"`
 	OrderBy            []arkivtype.OrderByAnnotation `json:"orderBy"`
-	Cursor             *string                       `json:"cursor"`
+	Cursor             string                        `json:"cursor"`
 }
 
 type arkivAPI struct {
@@ -122,7 +122,7 @@ func (api *arkivAPI) Query(
 	op *QueryOptions,
 ) (*arkivtype.QueryResponse, error) {
 
-	log.Info("arkiv API", "query_options", op)
+	log.Info("query options", "options", op)
 
 	expr, err := query.Parse(req)
 	if err != nil {
@@ -143,8 +143,8 @@ func (api *arkivAPI) Query(
 		OrderBy:            options.OrderBy,
 	}
 
-	if options.Cursor != nil {
-		offset, err := queryOptions.DecodeCursor(*options.Cursor)
+	if len(options.Cursor) != 0 {
+		offset, err := queryOptions.DecodeCursor(options.Cursor)
 		if err != nil {
 			return nil, err
 		}
@@ -198,7 +198,7 @@ func (api *arkivAPI) Query(
 
 	if op != nil {
 		maxResultsPerPage = int(op.ResultsPerPage)
-		log.Info("query", "max_results_per_page", maxResultsPerPage)
+		log.Info("query max results per page", "value", maxResultsPerPage)
 	}
 
 	startTime := time.Now()
@@ -247,7 +247,7 @@ func (api *arkivAPI) Query(
 		return nil, fmt.Errorf("failed to execute query: %w", err)
 	}
 
-	log.Info("query", "num_of_results", len(response.Data))
+	log.Info("query number of results", "value", len(response.Data))
 	return response, nil
 }
 
