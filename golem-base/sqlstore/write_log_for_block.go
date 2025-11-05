@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum/arkiv/compression"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -18,10 +19,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/holiman/uint256"
-	"github.com/klauspost/compress/zstd"
 )
-
-var decoder, _ = zstd.NewReader(nil)
 
 func WriteLogForBlockSqlite(
 	sqlStore *SQLStore,
@@ -201,7 +199,7 @@ func WriteLogForBlockSqlite(
 
 			case toAddr == address.ArkivProcessorAddress:
 
-				d, err := decoder.DecodeAll(tx.Data(), nil)
+				d, err := compression.BrotliDecompress(tx.Data())
 				if err != nil {
 					return fmt.Errorf("failed to decode compressed storage transaction: %w", err)
 				}
@@ -265,8 +263,6 @@ func WriteLogForBlockSqlite(
 	return nil
 }
 
-var encoder, _ = zstd.NewWriter(nil, zstd.WithEncoderLevel(zstd.SpeedBetterCompression))
-
 func extractArkivOperations(
 	stx *storagetx.ArkivTransaction,
 	txIx int,
@@ -312,7 +308,7 @@ func extractArkivOperations(
 		cr := Create{
 			EntityKey:          key,
 			ExpiresAtBlock:     expiresAtBlock,
-			Payload:            encoder.EncodeAll(create.Payload, nil),
+			Payload:            compression.MustBrotliCompress(create.Payload),
 			ContentType:        create.ContentType,
 			StringAnnotations:  create.StringAnnotations,
 			NumericAnnotations: create.NumericAnnotations,
@@ -347,7 +343,7 @@ func extractArkivOperations(
 		ur := Update{
 			EntityKey:          key,
 			ExpiresAtBlock:     expiresAtBlock,
-			Payload:            encoder.EncodeAll(update.Payload, nil),
+			Payload:            compression.MustBrotliCompress(update.Payload),
 			ContentType:        update.ContentType,
 			StringAnnotations:  update.StringAnnotations,
 			NumericAnnotations: update.NumericAnnotations,

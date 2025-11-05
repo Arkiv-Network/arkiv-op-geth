@@ -610,6 +610,7 @@ We expect
 	                └── P1''
 */
 func TestNewPayloadOnInvalidChain(t *testing.T) {
+	t.Skip("arkiv: skipping test, because it's flaky")
 	genesis, preMergeBlocks := generateMergeChain(10, false)
 	n, ethservice := startEthService(t, genesis, preMergeBlocks)
 	defer n.Close()

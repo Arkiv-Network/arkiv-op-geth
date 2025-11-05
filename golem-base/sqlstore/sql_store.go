@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/arkiv/compression"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/golem-base/arkivtype"
 	"github.com/ethereum/go-ethereum/golem-base/query"
@@ -888,7 +889,7 @@ func (e *SQLStore) QueryEntitiesInternalIterator(
 		var value []byte
 		if payload != nil {
 
-			decoded, err := decoder.DecodeAll(*payload, nil)
+			decoded, err := compression.BrotliDecompress(*payload)
 			if err != nil {
 				return fmt.Errorf("failed to decode compressed payload: %w", err)
 			}

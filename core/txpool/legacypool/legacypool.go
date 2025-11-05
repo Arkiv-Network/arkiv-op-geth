@@ -20,6 +20,7 @@ package legacypool
 import (
 	"context"
 	"errors"
+	"fmt"
 	"maps"
 	"math"
 	"math/big"
@@ -29,6 +30,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/arkiv/compression"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/prque"
 	"github.com/ethereum/go-ethereum/consensus/misc/eip1559"
@@ -652,18 +654,40 @@ func (pool *LegacyPool) Pending(filter txpool.PendingFilter) map[common.Address]
 // and does not require the pool mutex to be held.
 func (pool *LegacyPool) ValidateTxBasics(tx *types.Transaction) error {
 
+	to := tx.To()
 	if pool.disableNonGolembaseTransactions {
-		to := tx.To()
 
 		switch {
 		case to == nil:
 			return ErrNonGolembaseTransaction
 		case *to == address.GolemBaseStorageProcessorAddress:
-			return nil
+			// allow golem base storage transactions
 		case *to == address.ArkivProcessorAddress:
-			return nil
-
+			// allow arkiv transactions
+		default:
+			return ErrNonGolembaseTransaction
 		}
+
+	}
+
+	switch {
+	case to != nil && *to == address.GolemBaseStorageProcessorAddress:
+		if len(tx.Data()) == 0 {
+			return fmt.Errorf("golem base storage transaction data is empty")
+		}
+
+		return nil
+	case to != nil && *to == address.ArkivProcessorAddress:
+		if len(tx.Data()) == 0 {
+			return fmt.Errorf("arkiv transaction data is empty")
+		}
+
+		_, err := compression.BrotliDecompress(tx.Data())
+		if err != nil {
+			return fmt.Errorf("failed to decompress arkiv transaction data: %w", err)
+		}
+
+		return nil
 
 	}
 

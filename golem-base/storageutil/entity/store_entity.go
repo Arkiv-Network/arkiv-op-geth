@@ -8,7 +8,6 @@ import (
 	"github.com/ethereum/go-ethereum/golem-base/storageutil"
 	"github.com/ethereum/go-ethereum/golem-base/storageutil/entity/allentities"
 	"github.com/ethereum/go-ethereum/golem-base/storageutil/entity/entityexpiration"
-	"github.com/klauspost/compress/zstd"
 )
 
 // This regex should not allow $ or 0x as the first characters, since we use that for
@@ -18,8 +17,6 @@ const AnnotationIdentRegex string = `[\p{L}_][\p{L}\p{N}_]*`
 var AnnotationIdentRegexCompiled *regexp.Regexp = regexp.MustCompile(fmt.Sprintf("^%s$", AnnotationIdentRegex))
 
 type StateAccess = storageutil.StateAccess
-
-var encoder, _ = zstd.NewWriter(nil, zstd.WithEncoderLevel(zstd.SpeedBetterCompression))
 
 func Store(
 	access StateAccess,

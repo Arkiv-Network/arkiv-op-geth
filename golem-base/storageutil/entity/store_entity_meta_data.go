@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/arkiv/compression"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/golem-base/storageutil/stateblob"
@@ -19,7 +20,7 @@ func StoreEntityMetaData(access StateAccess, key common.Hash, emd EntityMetaData
 		return fmt.Errorf("failed to encode entity meta data: %w", err)
 	}
 
-	compressed := encoder.EncodeAll(buf.Bytes(), nil)
+	compressed := compression.MustBrotliCompress(buf.Bytes())
 
 	stateblob.SetBlob(access, hash, compressed)
 	return nil

@@ -6,6 +6,7 @@ import (
 	"io"
 	"math/big"
 
+	"github.com/andybalholm/brotli"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -17,7 +18,6 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/holiman/uint256"
-	"github.com/klauspost/compress/zstd"
 )
 
 //go:generate go run ../../rlp/rlpgen -type ArkivTransaction -out gen_arkiv_transaction_rlp.go
@@ -452,12 +452,7 @@ const maxCompressedSize = 1024 * 1024 * 20 // 10MB
 
 func ExecuteArkivTransaction(compressed []byte, blockNumber uint64, txHash common.Hash, txIx int, sender common.Address, access storageutil.StateAccess) ([]*types.Log, error) {
 
-	reader, err := zstd.NewReader(bytes.NewReader(compressed))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create zstd reader: %w", err)
-	}
-	defer reader.Close()
-
+	reader := brotli.NewReader(bytes.NewReader(compressed))
 	lr := io.LimitReader(reader, maxCompressedSize)
 
 	d, err := io.ReadAll(lr)

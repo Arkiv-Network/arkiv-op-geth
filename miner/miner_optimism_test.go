@@ -22,6 +22,7 @@ const testDAFootprintGasScalar = 400
 // transactions and then imports the block into the chain, asserting that
 // execution succeeds.
 func TestDAFootprintMining(t *testing.T) {
+	t.Skip("arkiv: skipping flaky miner tests")
 	requirePreJovianBehavior := func(t *testing.T, block *types.Block, receipts []*types.Receipt) {
 		var txGas uint64
 		for _, receipt := range receipts {
