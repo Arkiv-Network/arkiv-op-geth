@@ -344,6 +344,15 @@ func theResponseWouldBeEmpty(ctx context.Context) error {
 		if ed.Owner != nil {
 			return fmt.Errorf("expected owner to be nil, but got: %s", ed.Owner.Hex())
 		}
+		if ed.LastModifiedAtBlock != nil {
+			return fmt.Errorf("expected lastModifiedAtBlock to be nil, but got: %d", *ed.LastModifiedAtBlock)
+		}
+		if ed.TransactionIndexInBlock != nil {
+			return fmt.Errorf("expected transactionIndexInBlock to be nil, but got: %d", *ed.TransactionIndexInBlock)
+		}
+		if ed.OperationIndexInTransaction != nil {
+			return fmt.Errorf("expected operationIndexInTransaction to be nil, but got: %d", *ed.OperationIndexInTransaction)
+		}
 		if ed.StringAttributes != nil {
 			return fmt.Errorf("expected string annotations to be nil, but got array of length %d", len(ed.StringAttributes))
 		}

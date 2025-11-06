@@ -852,28 +852,28 @@ func (e *SQLStore) QueryEntitiesInternalIterator(
 			switch column {
 			case "key":
 				dest = append(dest, &key)
-				columns["key"] = &key
+				columns[column] = &key
 			case "expires_at":
 				dest = append(dest, &expiresAt)
-				columns["expires_at"] = &expiresAt
+				columns[column] = &expiresAt
 			case "payload":
 				dest = append(dest, &payload)
-				columns["payload"] = &payload
+				columns[column] = &payload
 			case "content_type":
 				dest = append(dest, &contentType)
-				columns["content_type"] = &contentType
+				columns[column] = &contentType
 			case "owner_address":
 				dest = append(dest, &owner)
-				columns["owner_address"] = &owner
+				columns[column] = &owner
 			case "last_modified_at_block":
 				dest = append(dest, &lastModifiedAtBlock)
-				columns["last_modified_at_block"] = &lastModifiedAtBlock
+				columns[column] = &lastModifiedAtBlock
 			case "transaction_index_in_block":
 				dest = append(dest, &transactionIndexInBlock)
-				columns["transaction_index_in_block"] = &transactionIndexInBlock
+				columns[column] = &transactionIndexInBlock
 			case "operation_index_in_transaction":
 				dest = append(dest, &operationIndexInTransaction)
-				columns["operation_index_in_transaction"] = &operationIndexInTransaction
+				columns[column] = &operationIndexInTransaction
 			default:
 				var value any
 				dest = append(dest, &value)
@@ -909,16 +909,25 @@ func (e *SQLStore) QueryEntitiesInternalIterator(
 		}
 
 		r := arkivtype.EntityData{
-			Key:                         keyHash,
-			ExpiresAt:                   expiresAt,
-			Value:                       value,
-			ContentType:                 contentType,
-			Owner:                       ownerAddress,
-			LastModifiedAtBlock:         lastModifiedAtBlock,
-			TransactionIndexInBlock:     transactionIndexInBlock,
-			OperationIndexInTransaction: operationIndexInTransaction,
-			StringAttributes:            []entity.StringAnnotation{},
-			NumericAttributes:           []entity.NumericAnnotation{},
+			Key:               keyHash,
+			ExpiresAt:         expiresAt,
+			Value:             value,
+			ContentType:       contentType,
+			Owner:             ownerAddress,
+			StringAttributes:  []entity.StringAnnotation{},
+			NumericAttributes: []entity.NumericAnnotation{},
+		}
+
+		// Make sure to only include these properties when they were actually requested
+		// They are always included in the query, so we need to explicitly check the query options
+		if slices.Contains(options.Columns, "last_modified_at_block") {
+			r.LastModifiedAtBlock = lastModifiedAtBlock
+		}
+		if slices.Contains(options.Columns, "transaction_index_in_block") {
+			r.TransactionIndexInBlock = transactionIndexInBlock
+		}
+		if slices.Contains(options.Columns, "operation_index_in_transaction") {
+			r.OperationIndexInTransaction = operationIndexInTransaction
 		}
 
 		cursor := arkivtype.Cursor{
