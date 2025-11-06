@@ -344,6 +344,9 @@ func theResponseWouldBeEmpty(ctx context.Context) error {
 		if ed.Owner != nil {
 			return fmt.Errorf("expected owner to be nil, but got: %s", ed.Owner.Hex())
 		}
+		if ed.CreatedAtBlock != nil {
+			return fmt.Errorf("expected createdAtBlock to be nil, but got: %d", *ed.CreatedAtBlock)
+		}
 		if ed.LastModifiedAtBlock != nil {
 			return fmt.Errorf("expected lastModifiedAtBlock to be nil, but got: %d", *ed.LastModifiedAtBlock)
 		}

@@ -15,6 +15,7 @@ var allColumns []string = []string{
 	"content_type",
 	"expires_at",
 	"owner_address",
+	"created_at_block",
 	"last_modified_at_block",
 	"transaction_index_in_block",
 	"operation_index_in_transaction",
@@ -91,6 +92,7 @@ type EntityData struct {
 	ContentType                 *string         `json:"contentType,omitempty"`
 	ExpiresAt                   *uint64         `json:"expiresAt,omitempty"`
 	Owner                       *common.Address `json:"owner,omitempty"`
+	CreatedAtBlock              *uint64         `json:"createdAtBlock,omitempty"`
 	LastModifiedAtBlock         *uint64         `json:"lastModifiedAtBlock,omitempty"`
 	TransactionIndexInBlock     *uint64         `json:"transactionIndexInBlock,omitempty"`
 	OperationIndexInTransaction *uint64         `json:"operationIndexInTransaction,omitempty"`

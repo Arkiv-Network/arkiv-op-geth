@@ -842,6 +842,7 @@ func (e *SQLStore) QueryEntitiesInternalIterator(
 			payload                     *[]byte
 			contentType                 *string
 			owner                       *string
+			createdAtBlock              *uint64
 			lastModifiedAtBlock         *uint64
 			transactionIndexInBlock     *uint64
 			operationIndexInTransaction *uint64
@@ -865,6 +866,9 @@ func (e *SQLStore) QueryEntitiesInternalIterator(
 			case "owner_address":
 				dest = append(dest, &owner)
 				columns[column] = &owner
+			case "created_at_block":
+				dest = append(dest, &createdAtBlock)
+				columns[column] = &createdAtBlock
 			case "last_modified_at_block":
 				dest = append(dest, &lastModifiedAtBlock)
 				columns[column] = &lastModifiedAtBlock
@@ -914,6 +918,7 @@ func (e *SQLStore) QueryEntitiesInternalIterator(
 			Value:             value,
 			ContentType:       contentType,
 			Owner:             ownerAddress,
+			CreatedAtBlock:    createdAtBlock,
 			StringAttributes:  []entity.StringAnnotation{},
 			NumericAttributes: []entity.NumericAnnotation{},
 		}

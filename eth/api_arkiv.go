@@ -22,6 +22,7 @@ type IncludeData struct {
 	ContentType                 bool `json:"contentType"`
 	Expiration                  bool `json:"expiration"`
 	Owner                       bool `json:"owner"`
+	CreatedAtBlock              bool `json:"createdAtBlock"`
 	LastModifiedAtBlock         bool `json:"lastModifiedAtBlock"`
 	TransactionIndexInBlock     bool `json:"transactionIndexInBlock"`
 	OperationIndexInTransaction bool `json:"operationIndexInTransaction"`
@@ -82,6 +83,9 @@ func (options *QueryOptions) toInternalQueryOptions() (*internalQueryOptions, er
 		}
 		if options.IncludeData.Key {
 			iq.Columns = append(iq.Columns, arkivtype.GetColumnOrPanic("key"))
+		}
+		if options.IncludeData.CreatedAtBlock {
+			iq.Columns = append(iq.Columns, arkivtype.GetColumnOrPanic("created_at_block"))
 		}
 		if options.IncludeData.LastModifiedAtBlock {
 			iq.Columns = append(iq.Columns, arkivtype.GetColumnOrPanic("last_modified_at_block"))
