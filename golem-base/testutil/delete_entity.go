@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/arkiv/compression"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/golem-base/address"
@@ -71,7 +72,7 @@ func (w *World) deleteEntityFromAccount(
 	}
 
 	// Create a StorageTransaction with a single Create operation
-	storageTx := &storagetx.StorageTransaction{
+	storageTx := &storagetx.ArkivTransaction{
 		Delete: []common.Hash{
 			key,
 		},
@@ -90,9 +91,9 @@ func (w *World) deleteEntityFromAccount(
 		GasTipCap:  big.NewInt(1e9), // 1 Gwei
 		GasFeeCap:  big.NewInt(5e9), // 5 Gwei
 		Gas:        122480,
-		To:         &address.GolemBaseStorageProcessorAddress,
+		To:         &address.ArkivProcessorAddress,
 		Value:      big.NewInt(0), // No ETH transfer needed
-		Data:       rlpData,
+		Data:       compression.MustBrotliCompress(rlpData),
 		AccessList: types.AccessList{},
 	}
 

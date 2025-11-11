@@ -27,7 +27,7 @@ type World struct {
 	LastTrace              json.RawMessage
 
 	// Storage transaction validation fields
-	CurrentStorageTransaction *storagetx.StorageTransaction
+	CurrentStorageTransaction *storagetx.ArkivTransaction
 	ValidationError           error
 
 	tempDir string

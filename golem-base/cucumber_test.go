@@ -232,6 +232,8 @@ func InitializeScenario(ctx *godog.ScenarioContext) {
 	ctx.Step(`^I submit an arkiv transaction with empty content and one annotation$`, iSubmitAnArkivTransactionWithEmptyContentAndOneAnnotation)
 	ctx.Step(`^the transaction should succeed$`, theTransactionShouldSucceed)
 
+	ctx.Step(`^the transaction should be rejected$`, theTransactionShouldBeRejected)
+
 }
 
 func iSearchForEntitiesWithTheInvalidQuery(ctx context.Context, query *godog.DocString) error {
@@ -2101,11 +2103,12 @@ func theTraceShouldBeEmpty(ctx context.Context) error {
 
 func iHaveAStorageTransactionWithCreateUpdateDeleteAndExtendOperations(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
-	w.CurrentStorageTransaction = &storagetx.StorageTransaction{
-		Create: []storagetx.Create{
+	w.CurrentStorageTransaction = &storagetx.ArkivTransaction{
+		Create: []storagetx.ArkivCreate{
 			{
-				BTL:     100,
-				Payload: []byte("test payload"),
+				BTL:         100,
+				ContentType: "application/octet-stream",
+				Payload:     []byte("test payload"),
 				StringAnnotations: []entity.StringAnnotation{
 					{Key: "type", Value: "test"},
 				},
@@ -2114,11 +2117,12 @@ func iHaveAStorageTransactionWithCreateUpdateDeleteAndExtendOperations(ctx conte
 				},
 			},
 		},
-		Update: []storagetx.Update{
+		Update: []storagetx.ArkivUpdate{
 			{
-				EntityKey: common.HexToHash("0x1234567890"),
-				BTL:       200,
-				Payload:   []byte("updated payload"),
+				EntityKey:   common.HexToHash("0x1234567890"),
+				BTL:         200,
+				ContentType: "application/octet-stream",
+				Payload:     []byte("updated payload"),
 				StringAnnotations: []entity.StringAnnotation{
 					{Key: "status", Value: "updated"},
 				},
@@ -2182,11 +2186,12 @@ func theValidationShouldFail(ctx context.Context) error {
 
 func iHaveAStorageTransactionWithACreateOperation(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
-	w.CurrentStorageTransaction = &storagetx.StorageTransaction{
-		Create: []storagetx.Create{
+	w.CurrentStorageTransaction = &storagetx.ArkivTransaction{
+		Create: []storagetx.ArkivCreate{
 			{
-				BTL:     100,
-				Payload: []byte("test payload"),
+				BTL:         100,
+				ContentType: "application/octet-stream",
+				Payload:     []byte("test payload"),
 			},
 		},
 	}
@@ -2215,12 +2220,13 @@ func theErrorShouldMention(ctx context.Context, expectedText string) error {
 
 func iHaveAStorageTransactionWithAnUpdateOperation(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
-	w.CurrentStorageTransaction = &storagetx.StorageTransaction{
-		Update: []storagetx.Update{
+	w.CurrentStorageTransaction = &storagetx.ArkivTransaction{
+		Update: []storagetx.ArkivUpdate{
 			{
-				EntityKey: common.HexToHash("0x1234567890"),
-				BTL:       200,
-				Payload:   []byte("updated payload"),
+				EntityKey:   common.HexToHash("0x1234567890"),
+				BTL:         200,
+				ContentType: "application/octet-stream",
+				Payload:     []byte("updated payload"),
 			},
 		},
 	}
@@ -2238,7 +2244,7 @@ func theUpdateOperationHasBTLSetTo(ctx context.Context, btl int) error {
 
 func iHaveAStorageTransactionWithAnExtendOperation(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
-	w.CurrentStorageTransaction = &storagetx.StorageTransaction{
+	w.CurrentStorageTransaction = &storagetx.ArkivTransaction{
 		Extend: []storagetx.ExtendBTL{
 			{
 				EntityKey:      common.HexToHash("0x1234567890"),
@@ -2379,21 +2385,23 @@ func theCreateOperationHasAStringAnnotationWithKeyStartingWithANumber(ctx contex
 
 func iHaveAnEmptyStorageTransaction(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
-	w.CurrentStorageTransaction = &storagetx.StorageTransaction{}
+	w.CurrentStorageTransaction = &storagetx.ArkivTransaction{}
 	return nil
 }
 
 func iHaveAStorageTransactionWithMultipleCreateOperations(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
-	w.CurrentStorageTransaction = &storagetx.StorageTransaction{
-		Create: []storagetx.Create{
+	w.CurrentStorageTransaction = &storagetx.ArkivTransaction{
+		Create: []storagetx.ArkivCreate{
 			{
-				BTL:     100,
-				Payload: []byte("valid payload"),
+				BTL:         100,
+				ContentType: "application/octet-stream",
+				Payload:     []byte("valid payload"),
 			},
 			{
-				BTL:     200,
-				Payload: []byte("another valid payload"),
+				BTL:         200,
+				ContentType: "application/octet-stream",
+				Payload:     []byte("another valid payload"),
 			},
 		},
 	}
@@ -2454,7 +2462,7 @@ func iSubmitAStorageTransactionWithNoPlayload(ctx context.Context) error {
 	_, err := w.SendTxWithData(
 		ctx,
 		big.NewInt(1),
-		address.GolemBaseStorageProcessorAddress,
+		address.ArkivProcessorAddress,
 		nil,
 	)
 	w.LastError = err
@@ -2466,12 +2474,10 @@ func iSubmitAStorageTransactionWithUnparseableData(ctx context.Context) error {
 	_, err := w.SendTxWithData(
 		ctx,
 		big.NewInt(1),
-		address.GolemBaseStorageProcessorAddress,
-		[]byte("unparseable data"),
+		address.ArkivProcessorAddress,
+		compression.MustBrotliCompress([]byte("unparseable data")),
 	)
-	if err != nil {
-		return fmt.Errorf("failed to transfer: %w", err)
-	}
+	w.LastError = err
 	return nil
 }
 
@@ -2796,8 +2802,8 @@ func theTransactionSubmissionShouldFail(ctx context.Context) error {
 		return fmt.Errorf("expected transaction submission to fail, but it succeeded")
 	}
 
-	if !strings.Contains(w.LastError.Error(), "golem base storage transaction data is empty") {
-		return fmt.Errorf("expected transaction submission to fail with 'golem base storage transaction data is empty', but got: %s", w.LastError.Error())
+	if !strings.Contains(w.LastError.Error(), "arkiv transaction data is empty") {
+		return fmt.Errorf("expected transaction submission to fail with 'arkiv transaction data is empty', but got: %s", w.LastError.Error())
 	}
 
 	return nil
@@ -2843,6 +2849,19 @@ func theTransactionShouldSucceed(ctx context.Context) error {
 
 	if w.LastReceipt.Status == types.ReceiptStatusFailed {
 		return fmt.Errorf("transaction failed")
+	}
+
+	return nil
+}
+
+func theTransactionShouldBeRejected(ctx context.Context) error {
+	w := testutil.GetWorld(ctx)
+	if w.LastError == nil {
+		return fmt.Errorf("no error found")
+	}
+
+	if !strings.Contains(w.LastError.Error(), "failed to unpack arkiv transaction: failed to decode storage transaction") {
+		return fmt.Errorf("expected error to contain 'failed to unpack arkiv transaction: failed to decode storage transaction', but got: %s", w.LastError.Error())
 	}
 
 	return nil
