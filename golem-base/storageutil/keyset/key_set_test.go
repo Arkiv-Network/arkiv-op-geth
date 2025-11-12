@@ -7,10 +7,8 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/golem-base/address"
 	"github.com/ethereum/go-ethereum/golem-base/storageutil/keyset"
-	"github.com/holiman/uint256"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -58,13 +56,6 @@ func (m *mockStateAccess) SetState(addr common.Address, key common.Hash, value c
 	}
 	m.storage[addr][key] = value
 	return value
-}
-
-func (m *mockStateAccess) AddBalance(addr common.Address, amount *uint256.Int, reason tracing.BalanceChangeReason) uint256.Int {
-	return *uint256.NewInt(0)
-}
-func (m *mockStateAccess) SubBalance(addr common.Address, amount *uint256.Int, reason tracing.BalanceChangeReason) uint256.Int {
-	return *uint256.NewInt(0)
 }
 
 // Helper method to get the number of entries in storage for testing

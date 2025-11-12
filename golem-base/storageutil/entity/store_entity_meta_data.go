@@ -11,19 +11,17 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
-func StoreEntityMetaData(access StateAccess, key common.Hash, emd EntityMetaData) (uint64, error) {
+func StoreEntityMetaData(access StateAccess, key common.Hash, emd EntityMetaData) error {
 	hash := crypto.Keccak256Hash(EntityMetaDataSalt, key[:])
 
 	buf := new(bytes.Buffer)
 	err := rlp.Encode(buf, &emd)
 	if err != nil {
-		return 0, fmt.Errorf("failed to encode entity meta data: %w", err)
+		return fmt.Errorf("failed to encode entity meta data: %w", err)
 	}
 
-	bytes := buf.Bytes()
-
-	compressed := compression.MustBrotliCompress(bytes)
+	compressed := compression.MustBrotliCompress(buf.Bytes())
 
 	stateblob.SetBlob(access, hash, compressed)
-	return uint64(len(bytes)), nil
+	return nil
 }

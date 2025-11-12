@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/golem-base/storageutil/keyset/array"
 	"github.com/holiman/uint256"
 	"github.com/stretchr/testify/require"
@@ -132,13 +131,6 @@ func (m *mockStateAccess) GetState(addr common.Address, key common.Hash) common.
 		return val
 	}
 	return common.Hash{}
-}
-
-func (m *mockStateAccess) AddBalance(addr common.Address, amount *uint256.Int, reason tracing.BalanceChangeReason) uint256.Int {
-	return *uint256.NewInt(0)
-}
-func (m *mockStateAccess) SubBalance(addr common.Address, amount *uint256.Int, reason tracing.BalanceChangeReason) uint256.Int {
-	return *uint256.NewInt(0)
 }
 
 func (m *mockStateAccess) SetState(addr common.Address, key common.Hash, value common.Hash) common.Hash {

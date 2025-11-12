@@ -7,15 +7,12 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/golem-base/arkivtype"
 	"github.com/ethereum/go-ethereum/golem-base/query"
 	"github.com/ethereum/go-ethereum/golem-base/sqlstore"
 	"github.com/ethereum/go-ethereum/golem-base/storageaccounting"
-	"github.com/ethereum/go-ethereum/golem-base/storagetx"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/holiman/uint256"
 )
 
 type IncludeData struct {
@@ -332,52 +329,4 @@ func (api *arkivAPI) GetBlockTiming(ctx context.Context) (*BlockTiming, error) {
 		CurrentBlockTime: header.Time,
 		BlockDuration:    header.Time - previousHeader.Time,
 	}, nil
-}
-
-var megaETH *uint256.Int
-
-func init() {
-	megaETH = uint256.NewInt(1000000000000000000)   // one ETH
-	megaETH.Mul(megaETH, uint256.NewInt(1_000_000)) // 1 MegaETH
-}
-
-func (api *arkivAPI) EstimateStorageCosts(ctx context.Context, data hexutil.Bytes) (*hexutil.Big, error) {
-	header := api.eth.blockchain.CurrentHeader()
-	stateDB, err := api.eth.BlockChain().StateAt(header.Root)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get state: %w", err)
-	}
-
-	address := common.HexToAddress("0x0000000000000000000000000000000000000000")
-
-	balanceBefore := stateDB.GetBalance(address).Clone()
-
-	_, err = storagetx.ExecuteArkivTransaction(
-		data,
-		header.Number.Uint64(),
-		common.Hash{},
-		0,
-		address,
-		stateDB,
-		megaETH.ToBig(),
-	)
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute arkiv transaction: %w", err)
-	}
-
-	balanceAfter := stateDB.GetBalance(address).Clone()
-
-	refund := balanceAfter.Clone()
-	refund.Sub(refund, balanceBefore)
-
-	price := megaETH.Clone()
-	price.Sub(price, refund)
-
-	priceBig := price.ToBig()
-
-	log.Info("estimaged price", "price", priceBig.String())
-
-	return (*hexutil.Big)(priceBig), nil
-
 }

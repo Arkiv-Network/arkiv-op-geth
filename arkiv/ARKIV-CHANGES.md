@@ -103,53 +103,6 @@ Transfers entity ownership to a new address.
 - Entity must exist
 - Sender must be current owner
 
-## Tokenomics
-
-Storage operations in Arkiv require payment based on data size and retention period.
-
-### Cost Calculation
-
-The cost for storing or extending entities is calculated using the formula:
-
-```
-cost = bytes_stored × blocks × 100 wei
-```
-
-Where:
-- `bytes_stored`: Total size of entity (metadata + decompressed payload)
-- `blocks`: Number of blocks to store (BTL for Create/Update, numberOfBlocks for Extend)
-- `100 wei`: Base rate per byte per block
-
-### Operations with Costs
-
-The following operations incur storage costs:
-
-- **Create**: Charges for initial storage based on entity size and BTL
-- **Update**: Charges for re-storing the entity with new size and BTL
-- **Extend**: Charges for extending TTL based on current entity size and additional blocks
-
-Operations without costs:
-- **Delete**: Free (removes data)
-- **ChangeOwner**: Free (metadata-only change)
-
-### Transaction Value Requirements
-
-Arkiv transactions must include sufficient ETH value to cover storage costs:
-
-1. **Required Value**: Transaction value must be ≥ total calculated storage cost for all operations
-2. **Refund**: Excess value beyond the required cost is automatically refunded to the sender
-3. **Insufficient Value**: Transactions with insufficient value will revert with an error
-
-**Example**:
-- Storage cost calculated: 50,000 wei
-- Transaction value sent: 100,000 wei
-- Amount charged: 50,000 wei
-- Amount refunded: 50,000 wei
-
-### Cost Estimation
-
-Use the `arkiv_estimateStorageCosts` RPC method to preview costs before submitting transactions (see RPC API section).
-
 ## Transaction Format & Compression
 
 Transactions are encoded and compressed to minimize on-chain data:
@@ -186,7 +139,7 @@ Emitted when a new entity is created via a Create operation.
 
 **Data** (64 bytes):
 - Bytes 0-31: Expiration block number (uint256)
-- Bytes 32-63: Cost in wei (uint256) - calculated as `bytes_stored × btl × 100`
+- Bytes 32-63: Cost in wei (uint256, currently always 0)
 
 #### ArkivEntityUpdated
 
@@ -202,7 +155,7 @@ Emitted when an existing entity is modified via an Update operation.
 **Data** (96 bytes):
 - Bytes 0-31: Old expiration block number (uint256)
 - Bytes 32-63: New expiration block number (uint256)
-- Bytes 64-95: Cost in wei (uint256) - calculated as `bytes_stored × btl × 100`
+- Bytes 64-95: Cost in wei (uint256, currently always 0)
 
 #### ArkivEntityDeleted
 
@@ -231,7 +184,7 @@ Emitted when an entity's time-to-live is extended via an Extend operation.
 **Data** (96 bytes):
 - Bytes 0-31: Old expiration block number (uint256)
 - Bytes 32-63: New expiration block number (uint256)
-- Bytes 64-95: Cost in wei (uint256) - calculated as `bytes_stored × numberOfBlocks × 100`
+- Bytes 64-95: Cost in wei (uint256, currently always 0)
 
 #### ArkivEntityOwnerChanged
 
@@ -339,40 +292,6 @@ The Arkiv RPC API provides methods to query and retrieve entity data. Implementa
   "current_block": 12345,
   "current_block_time": 1699123456,
   "duration": 2
-}
-```
-
-#### EstimateStorageCosts
-
-`arkiv_estimateStorageCosts(data)` - Estimates the storage cost for a given Arkiv transaction without executing it on-chain.
-
-**Parameters:**
-- `data`: The hex encoded compressed Arkiv transaction calldata (same format as would be submitted in a transaction)
-
-**Returns:** - Estimated cost in wei (hex encoded with leading `0x`)
-
-**Behavior:**
-- Simulates transaction execution in a temporary state
-- Calculates total storage costs for all operations in the transaction
-- Does not modify blockchain state
-- Uses a large balance (1 MegaETH) for simulation to avoid balance-related errors
-
-**Example:**
-```javascript
-{
-  "jsonrpc": "2.0",
-  "method": "arkiv_estimateStorageCosts",
-  "params": ["0x1b0f..."], // compressed transaction data
-  "id": 1
-}
-```
-
-**Response:**
-```json
-{
-  "jsonrpc": "2.0",
-  "result": "0xc350", // 50000 wei
-  "id": 1
 }
 ```
 

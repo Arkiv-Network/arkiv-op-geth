@@ -273,9 +273,6 @@ const (
 
 	// BalanceMint is an OP-Stack addition for an event that is emitted when the balance changes due to a mint operation.
 	BalanceMint BalanceChangeReason = 200
-
-	// BalanceTransactionFeeRefult is Arkiv-Networ addition for an event when passed fee is larger than required fee.
-	BalanceTransactionFeeRefund = 222
 )
 
 // GasChangeReason is used to indicate the reason for a gas change, useful

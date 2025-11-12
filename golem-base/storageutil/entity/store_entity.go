@@ -24,24 +24,24 @@ func Store(
 	sender common.Address,
 	emd EntityMetaData,
 	payload []byte,
-) (uint64, error) {
+) error {
 
 	err := allentities.AddEntity(access, key)
 	if err != nil {
-		return 0, fmt.Errorf("failed to add entity to all entities: %w", err)
+		return fmt.Errorf("failed to add entity to all entities: %w", err)
 	}
 
-	metaDataSize, err := StoreEntityMetaData(access, key, emd)
+	err = StoreEntityMetaData(access, key, emd)
 	if err != nil {
-		return 0, fmt.Errorf("failed to store entity meta data: %w", err)
+		return fmt.Errorf("failed to store entity meta data: %w", err)
 	}
 
 	err = entityexpiration.AddToEntitiesToExpireAtBlock(access, emd.ExpiresAtBlock, key)
 	if err != nil {
-		return 0, fmt.Errorf("failed to add entity to entities to expire: %w", err)
+		return fmt.Errorf("failed to add entity to entities to expire: %w", err)
 	}
 
-	payloadSize := StorePayload(access, key, payload)
+	StorePayload(access, key, payload)
 
-	return metaDataSize + payloadSize, nil
+	return nil
 }

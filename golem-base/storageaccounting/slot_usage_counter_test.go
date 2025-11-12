@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/golem-base/address"
 	"github.com/holiman/uint256"
 	"github.com/stretchr/testify/require"
@@ -36,13 +35,6 @@ func (m *mockStateAccess) SetState(address common.Address, key common.Hash, valu
 	prev := m.state[address][key]
 	m.state[address][key] = value
 	return prev
-}
-
-func (m *mockStateAccess) AddBalance(addr common.Address, amount *uint256.Int, reason tracing.BalanceChangeReason) uint256.Int {
-	return *uint256.NewInt(0)
-}
-func (m *mockStateAccess) SubBalance(addr common.Address, amount *uint256.Int, reason tracing.BalanceChangeReason) uint256.Int {
-	return *uint256.NewInt(0)
 }
 
 func TestNewSlotUsageCounter(t *testing.T) {

@@ -2811,7 +2811,6 @@ func theTransactionSubmissionShouldFail(ctx context.Context) error {
 
 func iSubmitAnArkivTransactionWithEmptyContentAndOneAnnotation(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
-
 	tx := &storagetx.ArkivTransaction{
 		Create: []storagetx.ArkivCreate{
 			{
@@ -2829,16 +2828,9 @@ func iSubmitAnArkivTransactionWithEmptyContentAndOneAnnotation(ctx context.Conte
 		return fmt.Errorf("failed to encode transaction: %w", err)
 	}
 
-	compressedData := compression.MustBrotliCompress(txData)
-
-	cost, err := w.EstimateStorageCosts(ctx, compressedData)
-	if err != nil {
-		return fmt.Errorf("failed to estimate storage costs: %w", err)
-	}
-
 	_, err = w.SendTxWithData(
 		ctx,
-		cost,
+		big.NewInt(0),
 		address.ArkivProcessorAddress,
 		compression.MustBrotliCompress(txData),
 	)

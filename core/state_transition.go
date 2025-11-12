@@ -632,7 +632,7 @@ func (st *stateTransition) innerExecute() (*ExecutionResult, error) {
 			var logs []*types.Log
 			// run the storage transaction
 			// We set the tx index to 0, since it doesn't matter because this execution won't modify the account state
-			logs, vmerr = storagetx.ExecuteTransaction(st.msg.Data, st.msg.BlockNumber, st.msg.TransactionHash, st.txIndex, msg.From, st.evm.StateDB, msg.Value)
+			logs, vmerr = storagetx.ExecuteTransaction(st.msg.Data, st.msg.BlockNumber, st.msg.TransactionHash, st.txIndex, msg.From, st.evm.StateDB)
 			if err != nil {
 				return nil, fmt.Errorf("failed to execute storage transaction: %w", err)
 			}
@@ -649,7 +649,7 @@ func (st *stateTransition) innerExecute() (*ExecutionResult, error) {
 			var logs []*types.Log
 			// run the arkiv transaction
 			// We set the tx index to 0, since it doesn't matter because this execution won't modify the account state
-			logs, vmerr = storagetx.ExecuteArkivTransaction(st.msg.Data, st.msg.BlockNumber, st.msg.TransactionHash, st.txIndex, msg.From, st.evm.StateDB, msg.Value)
+			logs, vmerr = storagetx.ExecuteArkivTransaction(st.msg.Data, st.msg.BlockNumber, st.msg.TransactionHash, st.txIndex, msg.From, st.evm.StateDB)
 			if err != nil {
 				return nil, fmt.Errorf("failed to execute arkiv transaction: %w", err)
 			}
