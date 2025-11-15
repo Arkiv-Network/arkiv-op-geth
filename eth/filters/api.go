@@ -372,6 +372,7 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit FilterCriteria) ([]*type
 		}
 		// Block numbers below 0 are special cases.
 		if begin > 0 && end > 0 && begin > end {
+			time.Sleep(5 * time.Second)
 			return nil, errInvalidBlockRange
 		}
 		if begin >= 0 && begin < int64(api.events.backend.HistoryPruningCutoff()) {
