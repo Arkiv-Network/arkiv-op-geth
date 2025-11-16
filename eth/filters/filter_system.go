@@ -319,6 +319,11 @@ func (es *EventSystem) SubscribeLogs(crit ethereum.FilterQuery, logs chan []*typ
 		return nil, &history.PrunedHistoryError{}
 	}
 
+	if to-from > 10000 {
+		time.Sleep(5 * time.Second)
+		return nil, errInvalidBlockRange
+	}
+
 	// only interested in new mined logs
 	if from == rpc.LatestBlockNumber && to == rpc.LatestBlockNumber {
 		return es.subscribeLogs(crit, logs), nil
