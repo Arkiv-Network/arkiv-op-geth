@@ -882,9 +882,10 @@ func (e *SQLStore) QueryEntitiesInternalIterator(
 	defer func() {
 		elapsed := time.Since(startTime)
 		if elapsed.Seconds() > 1 {
-			rows, err := e.readDB.QueryContext(ctx, fmt.Sprintf("explain query plan %s", query), args...)
+			rows, err := e.readDB.QueryContext(context.Background(), fmt.Sprintf("explain query plan %s", query), args...)
 			if err != nil {
 				log.Error("failed to get query plan", "err", err)
+				return
 			}
 
 			defer rows.Close()
@@ -901,11 +902,13 @@ func (e *SQLStore) QueryEntitiesInternalIterator(
 				err := rows.Err()
 				if err != nil {
 					log.Error("failed to get query plan", "err", err)
+					return
 				}
 
 				err = rows.Scan(&id, &parent, &notUsed, &detail)
 				if err != nil {
 					log.Error("failed to get query plan", "err", err)
+					return
 				}
 				fmt.Fprintf(&b, "id=%d parent=%d %s\n", id, parent, detail)
 			}
