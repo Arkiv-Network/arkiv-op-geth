@@ -906,14 +906,6 @@ func (e *SQLStore) InsertBlock(ctx context.Context, blockWal BlockWal, networkID
 		return fmt.Errorf("failed to insert processing status: %w", err)
 	}
 
-	// Delete blocks that are older than the historicBlocksCount
-	if e.historicBlocksCount > 0 && blockWal.BlockInfo.Number > e.historicBlocksCount {
-		deleteUntilBlock := int64(blockWal.BlockInfo.Number) - int64(e.historicBlocksCount)
-		txDB.DeleteStringAnnotationsUntilBlock(ctx, deleteUntilBlock)
-		txDB.DeleteNumericAnnotationsUntilBlock(ctx, deleteUntilBlock)
-		txDB.DeleteEntitiesUntilBlock(ctx, deleteUntilBlock)
-	}
-
 	return tx.Commit()
 }
 
