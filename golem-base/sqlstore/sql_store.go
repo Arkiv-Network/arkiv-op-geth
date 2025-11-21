@@ -190,6 +190,12 @@ func NewStore(dbFile string, historicBlocksCount uint64) (*SQLStore, error) {
 			db.Close()
 			return nil, fmt.Errorf("failed to drop entities table: %w", err)
 		}
+		_, err = tx.ExecContext(ctx, `DROP TABLE IF EXISTS processing_status;`)
+		if err != nil {
+			tx.Rollback()
+			db.Close()
+			return nil, fmt.Errorf("failed to drop processing_status table: %w", err)
+		}
 	}
 
 	log.Info("arkiv: applying database schema")
