@@ -30,6 +30,10 @@ func WriteLogForBlockSqlite(
 	receipts []*types.Receipt,
 ) (err error) {
 
+	if sqlStore.databaseDisabled {
+		return nil
+	}
+
 	ctx := context.Background()
 
 	writeLog := func() (err error) {
