@@ -1596,7 +1596,7 @@ func SetNodeConfig(ctx *cli.Context, cfg *node.Config) {
 		cfg.ArkivHistoricBlocksFlag = ArkivHistoricBlocksFlag.Value
 	}
 
-	cfg.ArkivDatabaseDisabled = ArkivDatabaseDisabledFlag.Value
+	cfg.ArkivDatabaseDisabled = ctx.Bool(ArkivDatabaseDisabledFlag.Name)
 
 	// deprecation notice for log debug flags (TODO: find a more appropriate place to put these?)
 	if ctx.IsSet(LogBacktraceAtFlag.Name) {
