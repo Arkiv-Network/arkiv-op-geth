@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/arkiv/compression"
@@ -93,13 +92,43 @@ type Delete struct {
 type SQLStore struct {
 	writeDB             *sql.DB
 	readDB              *sql.DB
-	lock                *sync.RWMutex
 	historicBlocksCount uint64
 	databaseDisabled    bool
 }
 
 func getSequence(createdAtBlock uint64, transactionIndexInBlock uint64, operationIndexInTransaction uint64) uint64 {
 	return createdAtBlock<<32 | transactionIndexInBlock<<16 | operationIndexInTransaction
+}
+
+// configureDBPool configures the database connection pool.
+// Keep constant set of open connections and never close them.
+// This allows us to avoid `database is locked` error, when new connection is opened.
+func configureDBPool(db *sql.DB, numThreads int) {
+	db.SetMaxOpenConns(numThreads)
+	db.SetMaxIdleConns(numThreads)
+	db.SetConnMaxLifetime(0)
+	db.SetConnMaxIdleTime(0)
+}
+
+// logDBStats logs database statistics for both read and write databases
+func (e *SQLStore) logDBStats(operation string, phase string) {
+	readStats := e.readDB.Stats()
+	writeStats := e.writeDB.Stats()
+
+	log.Info("database stats",
+		"phase", phase,
+		"operation", operation,
+		"readDB_openConnections", readStats.OpenConnections,
+		"readDB_inUse", readStats.InUse,
+		"readDB_idle", readStats.Idle,
+		"readDB_waitCount", readStats.WaitCount,
+		"readDB_waitDuration", readStats.WaitDuration,
+		"writeDB_openConnections", writeStats.OpenConnections,
+		"writeDB_inUse", writeStats.InUse,
+		"writeDB_idle", writeStats.Idle,
+		"writeDB_waitCount", writeStats.WaitCount,
+		"writeDB_waitDuration", writeStats.WaitDuration,
+	)
 }
 
 // NewStore creates a new ETL instance with database connection and schema setup
@@ -111,12 +140,12 @@ func NewStore(dbFile string, historicBlocksCount uint64, databaseDisabled bool) 
 		return nil, fmt.Errorf("failed to create database directory: %w", err)
 	}
 
-	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&mode=rwc&_journal_mode=WAL&_auto_vacuum=incremental&_foreign_keys=true&_txlock=immediate&_cache_size=1000000000", dbFile))
+	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?mode=rwc&_busy_timeout=11000&_journal_mode=WAL&_auto_vacuum=incremental&_foreign_keys=true&_txlock=immediate&_cache_size=1000000000", dbFile))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	db.SetMaxOpenConns(1)
+	configureDBPool(db, 1)
 
 	// Check if schema exists and apply if needed
 	ctx := context.Background()
@@ -225,17 +254,17 @@ func NewStore(dbFile string, historicBlocksCount uint64, databaseDisabled bool) 
 		return nil, fmt.Errorf("failed to recreate schema: %w", err)
 	}
 
-	readDB, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&mode=ro&_journal_mode=WAL&_auto_vacuum=incremental&_foreign_keys=true&_cache_size=1000000000", dbFile))
+	readDB, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?_query_only=true&_busy_timeout=11000&_journal_mode=WAL&_auto_vacuum=incremental&_foreign_keys=true&_txlock=deferred&_cache_size=1000000000", dbFile))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
-	readDB.SetMaxOpenConns(runtime.NumCPU())
+
+	configureDBPool(readDB, runtime.NumCPU())
 
 	store := &SQLStore{
 		writeDB:             db,
 		readDB:              readDB,
 		historicBlocksCount: historicBlocksCount,
-		lock:                &sync.RWMutex{},
 		databaseDisabled:    databaseDisabled,
 	}
 
@@ -278,10 +307,7 @@ func (e *SQLStore) doCollectGarbage(ctx context.Context) {
 
 	log.Info("collecting garbage in the DB", "count", garbageCount)
 
-	e.lock.Lock()
-
-	defer e.lock.Unlock()
-
+	e.logDBStats("collectGarbage", "start")
 	tx, err := e.writeDB.BeginTx(ctx, nil)
 	if err != nil {
 		log.Error("failed to begin transaction", "error", err)
@@ -303,9 +329,11 @@ func (e *SQLStore) doCollectGarbage(ctx context.Context) {
 
 	if err != nil {
 		tx.Rollback()
+		e.logDBStats("collectGarbage", "finish-rollback")
 		log.Error("failed to collect garbage in DB", "error", err)
 	} else {
 		tx.Commit()
+		e.logDBStats("collectGarbage", "finish-commit")
 		log.Info("collected garbage in the DB")
 	}
 }
@@ -336,14 +364,14 @@ func (e *SQLStore) GetProcessingStatus(ctx context.Context, networkID string) (*
 
 // GetEntityCount retrieves the total number of entities in the database
 func (e *SQLStore) GetEntityCount(ctx context.Context, block uint64) (uint64, error) {
-	e.lock.RLock()
-	defer e.lock.RUnlock()
-
+	e.logDBStats("getEntityCount", "start")
 	count, err := e.GetQueries().GetEntityCount(ctx, int64(block))
 	if err != nil {
+		e.logDBStats("getEntityCount", "finish-error")
 		return 0, fmt.Errorf("failed to get entity count: %w", err)
 	}
 
+	e.logDBStats("getEntityCount", "finish-success")
 	return uint64(count), nil
 }
 
@@ -367,9 +395,7 @@ func (e *SQLStore) SnapSyncToBlock(
 	log.Info("snap syncing to block start", "blockNumber", blockNumber, "blockHash", blockHash.Hex())
 	defer log.Info("snap syncing to block end", "blockNumber", blockNumber, "blockHash", blockHash.Hex())
 
-	e.lock.Lock()
-	defer e.lock.Unlock()
-
+	e.logDBStats("snapSyncToBlock", "start")
 	tx, err := e.writeDB.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -378,6 +404,7 @@ func (e *SQLStore) SnapSyncToBlock(
 	defer func() {
 		if err != nil {
 			err = errors.Join(err, tx.Rollback())
+			e.logDBStats("snapSyncToBlock", "finish-rollback")
 		}
 	}()
 
@@ -518,6 +545,7 @@ func (e *SQLStore) SnapSyncToBlock(
 		return fmt.Errorf("failed to update processing status: %w", err)
 	}
 
+	e.logDBStats("snapSyncToBlock", "before-commit")
 	return tx.Commit()
 }
 
@@ -529,9 +557,7 @@ func (e *SQLStore) InsertBlock(ctx context.Context, blockWal BlockWal, networkID
 	log.Info("processing block", "block", blockWal.BlockInfo.Number)
 	defer log.Info("processing block end", "block", blockWal.BlockInfo.Number)
 
-	e.lock.Lock()
-	defer e.lock.Unlock()
-
+	e.logDBStats("insertBlock", "start")
 	tx, err := e.writeDB.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -540,6 +566,7 @@ func (e *SQLStore) InsertBlock(ctx context.Context, blockWal BlockWal, networkID
 	defer func() {
 		if err != nil {
 			err = errors.Join(err, tx.Rollback())
+			e.logDBStats("insertBlock", "finish-rollback")
 		}
 	}()
 
@@ -926,6 +953,7 @@ func (e *SQLStore) InsertBlock(ctx context.Context, blockWal BlockWal, networkID
 		return fmt.Errorf("failed to insert processing status: %w", err)
 	}
 
+	e.logDBStats("insertBlock", "before-commit")
 	return tx.Commit()
 }
 
@@ -943,10 +971,8 @@ func (e *SQLStore) QueryEntitiesInternalIterator(
 	}
 	log.Info("Executing query", "query", query, "args", args)
 
-	e.lock.RLock()
-	defer e.lock.RUnlock()
-
 	// Begin a read-only transaction for consistency
+	e.logDBStats("queryEntities", "start")
 	tx, err := e.readDB.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
@@ -964,6 +990,7 @@ func (e *SQLStore) QueryEntitiesInternalIterator(
 	defer func() {
 		elapsed := time.Since(startTime)
 		if elapsed.Seconds() > 1 {
+			e.logDBStats("queryPlan", "start")
 			rows, err := e.readDB.QueryContext(context.Background(), fmt.Sprintf("explain query plan %s", query), args...)
 			if err != nil {
 				log.Error("failed to get query plan", "err", err)
@@ -995,6 +1022,7 @@ func (e *SQLStore) QueryEntitiesInternalIterator(
 				fmt.Fprintf(&b, "id=%d parent=%d %s\n", id, parent, detail)
 			}
 			log.Info("query plan", "plan", b.String())
+			e.logDBStats("queryPlan", "finish")
 		}
 	}()
 
@@ -1183,5 +1211,6 @@ func (e *SQLStore) QueryEntitiesInternalIterator(
 		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
+	e.logDBStats("queryEntities", "finish-commit")
 	return nil
 }
