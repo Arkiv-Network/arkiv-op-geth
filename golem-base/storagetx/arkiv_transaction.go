@@ -150,20 +150,30 @@ func (tx *ArkivTransaction) Validate() error {
 }
 
 type ArkivCreate struct {
-	BTL                uint64                     `json:"btl"`
-	ContentType        string                     `json:"contentType"`
-	Payload            []byte                     `json:"payload"`
-	StringAnnotations  []entity.StringAnnotation  `json:"stringAnnotations"`
-	NumericAnnotations []entity.NumericAnnotation `json:"numericAnnotations"`
+	BTL                uint64              `json:"btl"`
+	ContentType        string              `json:"contentType"`
+	Payload            []byte              `json:"payload"`
+	StringAnnotations  []StringAnnotation  `json:"stringAnnotations"`
+	NumericAnnotations []NumericAnnotation `json:"numericAnnotations"`
 }
 
 type ArkivUpdate struct {
-	EntityKey          common.Hash                `json:"entityKey"`
-	ContentType        string                     `json:"contentType"`
-	BTL                uint64                     `json:"btl"`
-	Payload            []byte                     `json:"payload"`
-	StringAnnotations  []entity.StringAnnotation  `json:"stringAnnotations"`
-	NumericAnnotations []entity.NumericAnnotation `json:"numericAnnotations"`
+	EntityKey          common.Hash         `json:"entityKey"`
+	ContentType        string              `json:"contentType"`
+	BTL                uint64              `json:"btl"`
+	Payload            []byte              `json:"payload"`
+	StringAnnotations  []StringAnnotation  `json:"stringAnnotations"`
+	NumericAnnotations []NumericAnnotation `json:"numericAnnotations"`
+}
+
+type StringAnnotation struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type NumericAnnotation struct {
+	Key   string `json:"key"`
+	Value uint64 `json:"value"`
 }
 
 type ArkivChangeOwner struct {
@@ -238,22 +248,9 @@ func (tx *ArkivTransaction) Run(blockNumber uint64, txHash common.Hash, txIx int
 
 		key := crypto.Keccak256Hash(txHash.Bytes(), create.Payload, paddedI)
 
-		contentType := "application/octet-stream"
-		if len(create.ContentType) > 0 {
-			contentType = create.ContentType
-		}
-
 		ap := &entity.EntityMetaData{
-			ContentType:         contentType,
-			Owner:               sender,
-			Creator:             sender,
-			ExpiresAtBlock:      blockNumber + create.BTL,
-			StringAnnotations:   create.StringAnnotations,
-			NumericAnnotations:  create.NumericAnnotations,
-			CreatedAtBlock:      blockNumber,
-			LastModifiedAtBlock: blockNumber,
-			OperationIndex:      uint64(opIx),
-			TransactionIndex:    uint64(txIx),
+			Owner:          sender,
+			ExpiresAtBlock: blockNumber + create.BTL,
 		}
 
 		err := storeEntity(key, ap, create.Payload, true)
@@ -310,7 +307,7 @@ func (tx *ArkivTransaction) Run(blockNumber uint64, txHash common.Hash, txIx int
 		}
 	}
 
-	for opIx, update := range tx.Update {
+	for _, update := range tx.Update {
 
 		oldMetaData, err := entity.GetEntityMetaData(access, update.EntityKey)
 		if err != nil {
@@ -327,15 +324,8 @@ func (tx *ArkivTransaction) Run(blockNumber uint64, txHash common.Hash, txIx int
 		}
 
 		ap := &entity.EntityMetaData{
-			ExpiresAtBlock:      blockNumber + update.BTL,
-			StringAnnotations:   update.StringAnnotations,
-			NumericAnnotations:  update.NumericAnnotations,
-			Owner:               oldMetaData.Owner,
-			Creator:             oldMetaData.Creator,
-			CreatedAtBlock:      oldMetaData.CreatedAtBlock,
-			LastModifiedAtBlock: blockNumber,
-			OperationIndex:      uint64(opIx),
-			TransactionIndex:    uint64(txIx),
+			Owner:          oldMetaData.Owner,
+			ExpiresAtBlock: blockNumber + update.BTL,
 		}
 
 		err = storeEntity(update.EntityKey, ap, update.Payload, false)

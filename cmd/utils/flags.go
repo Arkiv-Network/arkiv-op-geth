@@ -37,16 +37,15 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
+	"github.com/ethereum/go-ethereum/arkiv/dbevents"
 	bparams "github.com/ethereum/go-ethereum/beacon/params"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/fdlimit"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/txpool/blobpool"
 	"github.com/ethereum/go-ethereum/core/txpool/legacypool"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
@@ -59,7 +58,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/ethdb/remotedb"
 	"github.com/ethereum/go-ethereum/ethstats"
-	"github.com/ethereum/go-ethereum/golem-base/sqlstore"
 	"github.com/ethereum/go-ethereum/graphql"
 	"github.com/ethereum/go-ethereum/internal/ethapi"
 	"github.com/ethereum/go-ethereum/internal/flags"
@@ -2518,26 +2516,25 @@ func MakeChain(ctx *cli.Context, stack *node.Node, readonly bool) (*core.BlockCh
 	}
 	options.VmConfig = vmcfg
 
-	log.Info("Creating SQLStore", "path", stack.Config().GolemBaseSQLStateFile)
-	st, err := sqlstore.NewStore(
-		stack.Config().GolemBaseSQLStateFile,
-		stack.Config().ArkivHistoricBlocksFlag,
-		stack.Config().ArkivDatabaseDisabled,
-	)
-	if err != nil {
-		Fatalf("failed to create SQLStore: %v", err)
-	}
+	// log.Info("Creating SQLStore", "path", stack.Config().GolemBaseSQLStateFile)
+	// st, err := sqlstore.NewStore(
+	// 	stack.Config().GolemBaseSQLStateFile,
+	// 	stack.Config().ArkivHistoricBlocksFlag,
+	// 	stack.Config().ArkivDatabaseDisabled,
+	// )
+	// if err != nil {
+	// 	Fatalf("failed to create SQLStore: %v", err)
+	// }
 
-	chain, err := core.NewBlockChainWithOnNewBlock(chainDb, gspec, engine, options, func(db *state.CachingDB, hc *core.HeaderChain, chainID *big.Int, block *types.Block, receipts []*types.Receipt) error {
-		return sqlstore.WriteLogForBlockSqlite(
-			st,
-			db,
-			hc,
-			block,
-			config.ChainID,
-			receipts,
-		)
-	})
+	batchIterator, onNewHead := dbevents.NewChainBatchIterator(chainDb, 0)
+
+	go func() {
+		for b := range batchIterator {
+			log.Info("arkiv new batch", "from", b.Batch.Blocks[0].Number, "to", b.Batch.Blocks[len(b.Batch.Blocks)-1].Number)
+		}
+	}()
+
+	chain, err := core.NewBlockChainWithOnNewBlock(chainDb, gspec, engine, options, onNewHead)
 	if err != nil {
 		Fatalf("Can't create BlockChain with onNewBlock: %v", err)
 	}

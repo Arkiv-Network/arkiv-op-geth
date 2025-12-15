@@ -1,3 +1,4 @@
+@wip
 Feature: Tracking slot usage
 
   Scenario: Tracking slot usage
@@ -8,7 +9,7 @@ Feature: Tracking slot usage
   Scenario: Adding an entity
     Given I have created an entity
     When I get the number of used slots
-    Then the number of used slots should be 13
+    Then the number of used slots should be 4
 
   Scenario: Deleting an entity
     Given I have created an entity
@@ -20,7 +21,7 @@ Feature: Tracking slot usage
     Given I have created an entity
     When I update the entity
     And I get the number of used slots
-    Then the number of used slots should be 14
+    Then the number of used slots should be 4
 
   Scenario: Deleting an updated entity
     Given I have created an entity

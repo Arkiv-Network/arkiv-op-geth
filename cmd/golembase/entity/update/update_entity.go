@@ -15,7 +15,6 @@ import (
 	"github.com/ethereum/go-ethereum/golem-base/address"
 	arkivlogs "github.com/ethereum/go-ethereum/golem-base/logs"
 	"github.com/ethereum/go-ethereum/golem-base/storagetx"
-	"github.com/ethereum/go-ethereum/golem-base/storageutil/entity"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/urfave/cli/v2"
 )
@@ -96,7 +95,7 @@ func Update() *cli.Command {
 						BTL:         cfg.btl,
 						Payload:     []byte(c.String("data")),
 						ContentType: "application/octet-stream",
-						StringAnnotations: []entity.StringAnnotation{
+						StringAnnotations: []storagetx.StringAnnotation{
 							{
 								Key:   "foo",
 								Value: "bar",

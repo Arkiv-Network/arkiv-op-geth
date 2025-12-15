@@ -11,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/golem-base/address"
 	"github.com/ethereum/go-ethereum/golem-base/storagetx"
-	"github.com/ethereum/go-ethereum/golem-base/storageutil/entity"
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
@@ -20,8 +19,8 @@ func (w *World) UpdateEntity(
 	key common.Hash,
 	btl uint64,
 	payload []byte,
-	stringAnnotations []entity.StringAnnotation,
-	numericAnnotations []entity.NumericAnnotation,
+	stringAnnotations []storagetx.StringAnnotation,
+	numericAnnotations []storagetx.NumericAnnotation,
 ) (*types.Receipt, error) {
 
 	receipt, err := w.updateEntity(
@@ -50,8 +49,8 @@ func (w *World) UpdateEntityBySecondAccount(
 	key common.Hash,
 	btl uint64,
 	payload []byte,
-	stringAnnotations []entity.StringAnnotation,
-	numericAnnotations []entity.NumericAnnotation,
+	stringAnnotations []storagetx.StringAnnotation,
+	numericAnnotations []storagetx.NumericAnnotation,
 ) (*types.Receipt, error) {
 
 	receipt, err := w.updateEntity(
@@ -77,8 +76,8 @@ func (w *World) updateEntity(
 	account *FundedAccount,
 	btl uint64,
 	payload []byte,
-	stringAnnotations []entity.StringAnnotation,
-	numericAnnotations []entity.NumericAnnotation,
+	stringAnnotations []storagetx.StringAnnotation,
+	numericAnnotations []storagetx.NumericAnnotation,
 ) (*types.Receipt, error) {
 
 	client := w.GethInstance.ETHClient

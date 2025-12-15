@@ -332,7 +332,7 @@ type BlockChain struct {
 	logger     *tracing.Hooks
 
 	lastForkReadyAlert time.Time // Last time there was a fork readiness print out
-	onNewBlock         func(db *state.CachingDB, hc *HeaderChain, chainID *big.Int, block *types.Block, receipts []*types.Receipt) error
+	onNewBlock         func(chainConfig *params.ChainConfig, block *types.Block) error
 }
 
 // NewBlockChain returns a fully initialised block chain using information
@@ -350,7 +350,7 @@ func NewBlockChain(db ethdb.Database, genesis *Genesis, engine consensus.Engine,
 // NewBlockChain returns a fully initialised block chain using information
 // available in the database. It initialises the default Ethereum Validator
 // and Processor.
-func NewBlockChainWithOnNewBlock(db ethdb.Database, genesis *Genesis, engine consensus.Engine, cfg *BlockChainConfig, onNewBlock func(db *state.CachingDB, hc *HeaderChain, chainID *big.Int, block *types.Block, receipts []*types.Receipt) error) (*BlockChain, error) {
+func NewBlockChainWithOnNewBlock(db ethdb.Database, genesis *Genesis, engine consensus.Engine, cfg *BlockChainConfig, onNewBlock func(chainConfig *params.ChainConfig, block *types.Block) error) (*BlockChain, error) {
 	if cfg == nil {
 		cfg = DefaultConfig()
 	}
@@ -1232,14 +1232,6 @@ func (bc *BlockChain) writeHeadBlock(block *types.Block) {
 	rawdb.WriteTxLookupEntriesByBlock(batch, block)
 	rawdb.WriteHeadBlockHash(batch, block.Hash())
 
-	if bc.onNewBlock != nil {
-		receipts := bc.GetReceiptsByHash(block.Hash())
-		err := bc.onNewBlock(bc.statedb, bc.hc, bc.chainConfig.ChainID, block, receipts)
-		if err != nil {
-			log.Warn("Failed to call onNewBlock", "err", err)
-		}
-	}
-
 	// Flush the whole batch into the disk, exit the node if failed
 	if err := batch.Write(); err != nil {
 		log.Crit("Failed to update chain indexes and markers", "err", err)
@@ -1256,6 +1248,15 @@ func (bc *BlockChain) writeHeadBlock(block *types.Block) {
 
 	// OPStack addition
 	updateOptimismBlockMetrics(block.Header())
+
+	if bc.onNewBlock != nil {
+
+		err := bc.onNewBlock(bc.chainConfig, block)
+		if err != nil {
+			log.Warn("Failed to call onNewBlock", "err", err)
+		}
+	}
+
 }
 
 // stopWithoutSaving stops the blockchain service. If any imports are currently in progress

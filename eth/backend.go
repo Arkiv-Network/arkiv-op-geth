@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"math"
 	"math/big"
 	"runtime"
@@ -31,14 +32,16 @@ import (
 	"github.com/holiman/uint256"
 	"golang.org/x/time/rate"
 
+	sqlitestore "github.com/Arkiv-Network/sqlite-store"
+
 	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/ethereum/go-ethereum/arkiv/dbevents"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/filtermaps"
 	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/state/pruner"
 	"github.com/ethereum/go-ethereum/core/txpool"
 	"github.com/ethereum/go-ethereum/core/txpool/blobpool"
@@ -55,7 +58,6 @@ import (
 	"github.com/ethereum/go-ethereum/eth/tracers"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/golem-base/sqlstore"
 	"github.com/ethereum/go-ethereum/internal/ethapi"
 	"github.com/ethereum/go-ethereum/internal/sequencerapi"
 	"github.com/ethereum/go-ethereum/internal/shutdowncheck"
@@ -316,30 +318,33 @@ func New(stack *node.Node, config *ethconfig.Config) (*Ethereum, error) {
 		sqlStateFile = ":memory:"
 	}
 
-	st, err := sqlstore.NewStore(
-		stack.Config().GolemBaseSQLStateFile,
-		stack.Config().ArkivHistoricBlocksFlag,
-		stack.Config().ArkivDatabaseDisabled,
+	// st, err := sqlstore.NewStore(
+	//	stack.Config().GolemBaseSQLStateFile,
+	//	stack.Config().ArkivHistoricBlocksFlag,
+	//	stack.Config().ArkivDatabaseDisabled,
+	// )
+	// if err != nil {
+	//	return nil, fmt.Errorf("failed to create SQLStore: %w", err)
+	// }
+
+	store, err := sqlitestore.NewSQLiteStore(
+		slog.Default(),
+		sqlStateFile,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create SQLStore: %w", err)
+		return nil, fmt.Errorf("failed to create sql store: %w", err)
 	}
 
-	onNewBlock := func(db *state.CachingDB, hc *core.HeaderChain, chainID *big.Int, block *types.Block, receipts []*types.Receipt) error {
-		if sqlStateFile == ":memory:" {
-			return nil
+	batchIterator, onNewHead := dbevents.NewChainBatchIterator(chainDb, 0)
+
+	go func() {
+		err := store.FollowEvents(context.Background(), batchIterator)
+		if err != nil {
+			log.Error("failed to follow events", "error", err)
 		}
-		return sqlstore.WriteLogForBlockSqlite(
-			st,
-			db,
-			hc,
-			block,
-			chainID,
-			receipts,
-		)
-	}
+	}()
 
-	eth.blockchain, err = core.NewBlockChainWithOnNewBlock(chainDb, config.Genesis, eth.engine, options, onNewBlock)
+	eth.blockchain, err = core.NewBlockChainWithOnNewBlock(chainDb, config.Genesis, eth.engine, options, onNewHead)
 	if err != nil {
 		return nil, err
 	}
@@ -469,17 +474,15 @@ func New(stack *node.Node, config *ethconfig.Config) (*Ethereum, error) {
 	// Start the RPC service
 	eth.netRPCService = ethapi.NewNetAPI(eth.p2pServer, networkID)
 
+	arkivAPI, err := NewArkivAPI(eth, sqlStateFile)
+	if err != nil {
+		return nil, fmt.Errorf("error creating Arkiv API: %w", err)
+	}
 	// Register the backend on the node
 	stack.RegisterAPIs([]rpc.API{
 		{
-			Namespace: "golembase",
-			Service:   NewGolemBaseAPI(eth, st),
-		},
-	})
-	stack.RegisterAPIs([]rpc.API{
-		{
 			Namespace: "arkiv",
-			Service:   NewArkivAPI(eth, st),
+			Service:   arkivAPI,
 		},
 	})
 	stack.RegisterAPIs(eth.APIs())

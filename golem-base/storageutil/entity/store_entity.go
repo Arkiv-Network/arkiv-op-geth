@@ -6,7 +6,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/golem-base/storageutil"
-	"github.com/ethereum/go-ethereum/golem-base/storageutil/entity/allentities"
 	"github.com/ethereum/go-ethereum/golem-base/storageutil/entity/entityexpiration"
 )
 
@@ -26,12 +25,7 @@ func Store(
 	payload []byte,
 ) error {
 
-	err := allentities.AddEntity(access, key)
-	if err != nil {
-		return fmt.Errorf("failed to add entity to all entities: %w", err)
-	}
-
-	err = StoreEntityMetaData(access, key, emd)
+	err := StoreEntityMetaData(access, key, emd)
 	if err != nil {
 		return fmt.Errorf("failed to store entity meta data: %w", err)
 	}
@@ -40,8 +34,6 @@ func Store(
 	if err != nil {
 		return fmt.Errorf("failed to add entity to entities to expire: %w", err)
 	}
-
-	StorePayload(access, key, payload)
 
 	return nil
 }

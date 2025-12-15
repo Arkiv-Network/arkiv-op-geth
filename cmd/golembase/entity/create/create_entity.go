@@ -16,7 +16,6 @@ import (
 	"github.com/ethereum/go-ethereum/golem-base/address"
 	arkivlogs "github.com/ethereum/go-ethereum/golem-base/logs"
 	"github.com/ethereum/go-ethereum/golem-base/storagetx"
-	"github.com/ethereum/go-ethereum/golem-base/storageutil/entity"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/urfave/cli/v2"
 )
@@ -28,15 +27,15 @@ import (
 // --string hello:world --string foo:bar
 // to provide two annotations, hello:world and foo:bar.
 
-func ParseStringAnnotations(input []string) ([]entity.StringAnnotation, error) {
-	var annotations []entity.StringAnnotation
+func ParseStringAnnotations(input []string) ([]storagetx.StringAnnotation, error) {
+	var annotations []storagetx.StringAnnotation
 
 	for _, pair := range input {
 		kv := strings.SplitN(pair, ":", 2)
 		if len(kv) != 2 {
 			return nil, fmt.Errorf("invalid annotation pair: %q", pair)
 		}
-		annotations = append(annotations, entity.StringAnnotation{
+		annotations = append(annotations, storagetx.StringAnnotation{
 			Key:   strings.TrimSpace(kv[0]),
 			Value: strings.TrimSpace(kv[1]),
 		})
@@ -51,8 +50,8 @@ func ParseStringAnnotations(input []string) ([]entity.StringAnnotation, error) {
 // Example:
 // --num favorite:100 --num count:10
 // to provide two annotations, favorite:100 and count:10.
-func ParseNumericAnnotations(input []string) ([]entity.NumericAnnotation, error) {
-	var annotations []entity.NumericAnnotation
+func ParseNumericAnnotations(input []string) ([]storagetx.NumericAnnotation, error) {
+	var annotations []storagetx.NumericAnnotation
 
 	for _, pair := range input {
 		kv := strings.SplitN(pair, ":", 2)
@@ -67,7 +66,7 @@ func ParseNumericAnnotations(input []string) ([]entity.NumericAnnotation, error)
 			return nil, fmt.Errorf("invalid value for key %q: %v", key, err)
 		}
 
-		annotations = append(annotations, entity.NumericAnnotation{
+		annotations = append(annotations, storagetx.NumericAnnotation{
 			Key:   key,
 			Value: val,
 		})

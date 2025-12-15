@@ -1,7 +1,6 @@
 package state
 
 import (
-	"github.com/ethereum/go-ethereum/cmd/golembase/state/allentities"
 	"github.com/ethereum/go-ethereum/cmd/golembase/state/usedslots"
 	"github.com/urfave/cli/v2"
 )
@@ -11,7 +10,6 @@ func State() *cli.Command {
 		Name:  "state",
 		Usage: "Debug the state of the storage layer",
 		Subcommands: []*cli.Command{
-			allentities.AllEntities(),
 			usedslots.UsedSlots(),
 		},
 	}

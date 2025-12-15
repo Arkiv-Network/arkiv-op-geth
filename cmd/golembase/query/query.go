@@ -5,10 +5,15 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/ethereum/go-ethereum/golem-base/golemtype"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/urfave/cli/v2"
 )
+
+type SearchResult struct {
+	Key   common.Hash `json:"key"`
+	Value []byte      `json:"value"`
+}
 
 func Query() *cli.Command {
 	cfg := struct {
@@ -49,7 +54,7 @@ func Query() *cli.Command {
 			}
 			defer rpcClient.Close()
 
-			res := []golemtype.SearchResult{}
+			res := []SearchResult{}
 
 			err = rpcClient.CallContext(
 				ctx,

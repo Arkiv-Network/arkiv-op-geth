@@ -10,25 +10,22 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	queryapi "github.com/Arkiv-Network/query-api/query"
 	"github.com/cucumber/godog"
 	"github.com/cucumber/godog/colors"
 	"github.com/ethereum/go-ethereum/arkiv/compression"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/eth"
 	"github.com/ethereum/go-ethereum/golem-base/address"
-	"github.com/ethereum/go-ethereum/golem-base/arkivtype"
-	"github.com/ethereum/go-ethereum/golem-base/golemtype"
 	arkivlogs "github.com/ethereum/go-ethereum/golem-base/logs"
 	"github.com/ethereum/go-ethereum/golem-base/storagetx"
-	"github.com/ethereum/go-ethereum/golem-base/storageutil/entity"
 	"github.com/ethereum/go-ethereum/golem-base/testutil"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -40,7 +37,7 @@ var opts = godog.Options{
 	Output:      colors.Uncolored(os.Stdout),
 	Format:      "progress",
 	Strict:      true,
-	Concurrency: 4,
+	Concurrency: runtime.NumCPU(),
 
 	Paths: []string{"features"},
 }
@@ -242,7 +239,7 @@ func iSearchForEntitiesWithTheInvalidQuery(ctx context.Context, query *godog.Doc
 	err := w.GethInstance.RPCClient.CallContext(
 		ctx,
 		nil,
-		"golembase_queryEntities",
+		"arkiv_query",
 		query.Content,
 	)
 
@@ -268,22 +265,22 @@ func iShouldSeeAnErrorContaining(ctx context.Context, expectedSubstring string) 
 func iSearchForEntitiesWithoutColumns(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
 
-	response := arkivtype.QueryResponse{}
+	response := queryapi.QueryResponse{}
 	err := w.GethInstance.RPCClient.CallContext(
 		ctx,
 		&response,
 		"arkiv_query",
 		`foo = "bar"`,
-		eth.QueryOptions{
-			IncludeData: &eth.IncludeData{},
+		queryapi.QueryOptions{
+			IncludeData: &queryapi.IncludeData{},
 		},
 	)
 
 	w.LastError = err
 
-	edList := []arkivtype.EntityData{}
+	edList := []queryapi.EntityData{}
 	for _, d := range response.Data {
-		ed := arkivtype.EntityData{}
+		ed := queryapi.EntityData{}
 
 		err = json.Unmarshal(d, &ed)
 		if err != nil {
@@ -300,20 +297,19 @@ func iSearchForEntitiesWithoutColumns(ctx context.Context) error {
 func iSearchForAllEntities(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
 
-	response := arkivtype.QueryResponse{}
+	response := queryapi.QueryResponse{}
 	err := w.GethInstance.RPCClient.CallContext(
 		ctx,
 		&response,
 		"arkiv_query",
 		`$all`,
-		eth.QueryOptions{},
 	)
 
 	w.LastError = err
 
-	edList := []arkivtype.EntityData{}
+	edList := []queryapi.EntityData{}
 	for _, d := range response.Data {
-		ed := arkivtype.EntityData{}
+		ed := queryapi.EntityData{}
 
 		err = json.Unmarshal(d, &ed)
 		if err != nil {
@@ -380,13 +376,13 @@ func submitATransactionToCreateAnEntity(ctx context.Context) error {
 		ctx,
 		100,
 		[]byte("test payload"),
-		[]entity.StringAnnotation{
+		[]storagetx.StringAnnotation{
 			{
 				Key:   "test_key",
 				Value: "test_value",
 			},
 		},
-		[]entity.NumericAnnotation{
+		[]storagetx.NumericAnnotation{
 			{
 				Key:   "test_number",
 				Value: 42,
@@ -447,37 +443,27 @@ func theEntityShouldBeCreated(ctx context.Context) error {
 
 	key := receipt.Logs[0].Topics[1]
 
-	var v []byte
-
 	rcpClient := w.GethInstance.RPCClient
 
+	var e queryapi.QueryResponse
 	err := rcpClient.CallContext(
-		ctx,
-		&v,
-		"golembase_getStorageValue",
-		key.Hex(),
-	)
-	if err != nil {
-		return fmt.Errorf("failed to get storage value: %w", err)
-	}
-
-	if string(v) != "test payload" {
-		return fmt.Errorf("unexpected storage value: %s", string(v))
-	}
-
-	var e arkivtype.QueryResponse
-	err = rcpClient.CallContext(
 		ctx,
 		&e,
 		"arkiv_query",
 		fmt.Sprintf(`$key = %s`, key.Hex()),
-		struct{}{},
+		queryapi.Options{
+			IncludeData: &queryapi.IncludeData{
+				Key:         true,
+				Payload:     true,
+				ContentType: true,
+			},
+		},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to get storage value: %w", err)
 	}
 
-	ed := arkivtype.EntityData{}
+	ed := queryapi.EntityData{}
 
 	err = json.Unmarshal(e.Data[0], &ed)
 	if err != nil {
@@ -510,14 +496,13 @@ func theExpiryOfTheEntityShouldBeRecorded(ctx context.Context) error {
 
 	key := receipt.Logs[0].Topics[1]
 
-	var result arkivtype.QueryResponse
+	var result queryapi.QueryResponse
 
 	err := rcpClient.CallContext(
 		ctx,
 		&result,
 		"arkiv_query",
 		fmt.Sprintf("$expiration = %d", blockNumber256.Uint64()),
-		struct{}{},
 	)
 
 	if err != nil {
@@ -528,7 +513,7 @@ func theExpiryOfTheEntityShouldBeRecorded(ctx context.Context) error {
 		return fmt.Errorf("unexpected number of entities to expire: %d (expected 1)", len(result.Data))
 	}
 
-	ed := arkivtype.EntityData{}
+	ed := queryapi.EntityData{}
 
 	err = json.Unmarshal(result.Data[0], &ed)
 	if err != nil {
@@ -549,32 +534,19 @@ func iShouldBeAbleToRetrieveTheEntityByTheStringAnnotation(ctx context.Context) 
 
 	rcpClient := w.GethInstance.RPCClient
 
-	keys := []common.Hash{}
-	if err := rcpClient.CallContext(
-		ctx,
-		&keys,
-		"golembase_getEntitiesForStringAnnotationValue",
-		"test_key",
-		"test_value",
-	); err != nil {
-		return fmt.Errorf("failed to get entities by string anotation: %w", err)
-	}
-
-	if len(keys) != 1 {
-		return fmt.Errorf("unexpected number of entities retrieved: %d (expected 1)", len(keys))
-	}
-
-	if keys[0] != key {
-		return fmt.Errorf("unexpected retrieved entity: %s (expected %s)", keys[0].Hex(), key.Hex())
-	}
-
-	entities := arkivtype.QueryResponse{}
+	entities := queryapi.QueryResponse{}
 	err := rcpClient.CallContext(
 		ctx,
 		&entities,
 		"arkiv_query",
 		`test_key = "test_value"`,
-		struct{}{},
+		queryapi.Options{
+			IncludeData: &queryapi.IncludeData{
+				Key:         true,
+				Payload:     true,
+				ContentType: true,
+			},
+		},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to get entities by string anotation: %w", err)
@@ -584,7 +556,7 @@ func iShouldBeAbleToRetrieveTheEntityByTheStringAnnotation(ctx context.Context) 
 		return fmt.Errorf("unexpected number of entities retrieved: %d (expected 1)", len(entities.Data))
 	}
 
-	ed := arkivtype.EntityData{}
+	ed := queryapi.EntityData{}
 
 	err = json.Unmarshal(entities.Data[0], &ed)
 	if err != nil {
@@ -607,32 +579,12 @@ func iShouldBeAbleToRetrieveTheEntityByTheNumericAnnotation(ctx context.Context)
 	key := receipt.Logs[0].Topics[1]
 	rcpClient := w.GethInstance.RPCClient
 
-	keys := []common.Hash{}
-	if err := rcpClient.CallContext(
-		ctx,
-		&keys,
-		"golembase_getEntitiesForNumericAnnotationValue",
-		"test_number",
-		42,
-	); err != nil {
-		return fmt.Errorf("failed to get entities by numeric annotation: %w", err)
-	}
-
-	if len(keys) != 1 {
-		return fmt.Errorf("unexpected number of entities to retrieved: %d (expected 1)", len(keys))
-	}
-
-	if keys[0] != key {
-		return fmt.Errorf("unexpected retrieved entity: %s (expected %s)", keys[0].Hex(), key.Hex())
-	}
-
-	entities := arkivtype.QueryResponse{}
+	entities := queryapi.QueryResponse{}
 	err := rcpClient.CallContext(
 		ctx,
 		&entities,
 		"arkiv_query",
 		"test_number = 42",
-		struct{}{},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to get entities by numeric annotation: %w", err)
@@ -642,7 +594,7 @@ func iShouldBeAbleToRetrieveTheEntityByTheNumericAnnotation(ctx context.Context)
 		return fmt.Errorf("unexpected number of entities to retrieved: %d (expected 1)", len(entities.Data))
 	}
 
-	ed := arkivtype.EntityData{}
+	ed := queryapi.EntityData{}
 
 	err = json.Unmarshal(entities.Data[0], &ed)
 	if err != nil {
@@ -663,7 +615,7 @@ func iStoreAnEntityWithAStringAnnotation(ctx context.Context) error {
 		ctx,
 		100,
 		[]byte("test payload"),
-		[]entity.StringAnnotation{
+		[]storagetx.StringAnnotation{
 			{
 				Key:   "test_key",
 				Value: "test_value",
@@ -687,8 +639,8 @@ func iStoreAnEntityWithANumericalAnnotation(ctx context.Context) error {
 		ctx,
 		100,
 		[]byte("test payload"),
-		[]entity.StringAnnotation{},
-		[]entity.NumericAnnotation{
+		[]storagetx.StringAnnotation{},
+		[]storagetx.NumericAnnotation{
 			{
 				Key:   "test_number",
 				Value: 42,
@@ -707,10 +659,10 @@ func iStoreAnEntityWithANumericalAnnotation(ctx context.Context) error {
 func iHaveAnEntityWithStringAnnotations(ctx context.Context, payload string, annotationsTable *godog.Table) error {
 	w := testutil.GetWorld(ctx)
 
-	stringAnnotations := []entity.StringAnnotation{}
+	stringAnnotations := []storagetx.StringAnnotation{}
 
 	for _, row := range annotationsTable.Rows {
-		stringAnnotations = append(stringAnnotations, entity.StringAnnotation{
+		stringAnnotations = append(stringAnnotations, storagetx.StringAnnotation{
 			Key:   row.Cells[0].Value,
 			Value: row.Cells[1].Value,
 		})
@@ -721,7 +673,7 @@ func iHaveAnEntityWithStringAnnotations(ctx context.Context, payload string, ann
 		100,
 		[]byte("test payload"),
 		stringAnnotations,
-		[]entity.NumericAnnotation{},
+		[]storagetx.NumericAnnotation{},
 	)
 
 	if err != nil {
@@ -735,26 +687,14 @@ func iSearchForEntitiesWithTheStringAnnotationEqualTo(ctx context.Context, key, 
 	w := testutil.GetWorld(ctx)
 	rcpClient := w.GethInstance.RPCClient
 
-	res := []golemtype.SearchResult{}
-
-	if err := rcpClient.CallContext(
-		ctx,
-		&res,
-		"golembase_queryEntities",
-		fmt.Sprintf(`%s="%s"`, key, value),
-	); err != nil {
-		return fmt.Errorf("failed to get entities by numeric annotation: %w", err)
-	}
-	w.SearchResult = res
-
-	res2 := arkivtype.QueryResponse{}
+	res := queryapi.QueryResponse{}
 	err := rcpClient.CallContext(
 		ctx,
-		&res2,
+		&res,
 		"arkiv_query",
 		fmt.Sprintf(`%s="%s"`, key, value),
-		eth.QueryOptions{
-			OrderBy: []arkivtype.OrderByAnnotation{
+		queryapi.Options{
+			OrderBy: []queryapi.OrderByAnnotation{
 				{
 					Name: key,
 					Type: "string",
@@ -766,9 +706,9 @@ func iSearchForEntitiesWithTheStringAnnotationEqualTo(ctx context.Context, key, 
 		return fmt.Errorf("failed to get entities by numeric annotation: %w", err)
 	}
 
-	edList := []arkivtype.EntityData{}
-	for _, d := range res2.Data {
-		ed := arkivtype.EntityData{}
+	edList := []queryapi.EntityData{}
+	for _, d := range res.Data {
+		ed := queryapi.EntityData{}
 
 		err = json.Unmarshal(d, &ed)
 		if err != nil {
@@ -795,14 +735,14 @@ func iShouldFindEntity(ctx context.Context, count int) error {
 func iHaveAnEntityWithNumericAnnotations(ctx context.Context, payload string, annotationsTable *godog.Table) error {
 	w := testutil.GetWorld(ctx)
 
-	numericAnnotations := []entity.NumericAnnotation{}
+	numericAnnotations := []storagetx.NumericAnnotation{}
 
 	for _, row := range annotationsTable.Rows {
 		val, err := strconv.ParseUint(row.Cells[1].Value, 10, 64)
 		if err != nil {
 			return fmt.Errorf("failed to parse numeric value: %w", err)
 		}
-		numericAnnotations = append(numericAnnotations, entity.NumericAnnotation{
+		numericAnnotations = append(numericAnnotations, storagetx.NumericAnnotation{
 			Key:   row.Cells[0].Value,
 			Value: val,
 		})
@@ -812,7 +752,7 @@ func iHaveAnEntityWithNumericAnnotations(ctx context.Context, payload string, an
 		ctx,
 		100,
 		[]byte("test payload"),
-		[]entity.StringAnnotation{},
+		[]storagetx.StringAnnotation{},
 		numericAnnotations,
 	)
 
@@ -832,31 +772,19 @@ func iSearchForEntitiesWithTheNumericAnnotationEqualTo(ctx context.Context, key 
 		return fmt.Errorf("failed to parse numeric value: %w", err)
 	}
 
-	res := []golemtype.SearchResult{}
+	res := queryapi.QueryResponse{}
 	if err = rcpClient.CallContext(
 		ctx,
 		&res,
-		"golembase_queryEntities",
-		fmt.Sprintf(`%s=%d`, key, value),
-	); err != nil {
-		return fmt.Errorf("failed to get entities by numeric annotation: %w", err)
-	}
-	w.SearchResult = res
-
-	res2 := arkivtype.QueryResponse{}
-	if err = rcpClient.CallContext(
-		ctx,
-		&res2,
 		"arkiv_query",
 		fmt.Sprintf(`%s=%d`, key, value),
-		struct{}{},
 	); err != nil {
 		return fmt.Errorf("failed to get entities by numeric annotation: %w", err)
 	}
 
-	edList := []arkivtype.EntityData{}
-	for _, d := range res2.Data {
-		ed := arkivtype.EntityData{}
+	edList := []queryapi.EntityData{}
+	for _, d := range res.Data {
+		ed := queryapi.EntityData{}
 
 		err = json.Unmarshal(d, &ed)
 		if err != nil {
@@ -877,13 +805,13 @@ func iHaveCreatedAnEntity(ctx context.Context) error {
 		ctx,
 		100,
 		[]byte("test payload"),
-		[]entity.StringAnnotation{
+		[]storagetx.StringAnnotation{
 			{
 				Key:   "test_key",
 				Value: "test_value",
 			},
 		},
-		[]entity.NumericAnnotation{
+		[]storagetx.NumericAnnotation{
 			{
 				Key:   "test_number",
 				Value: 42,
@@ -941,13 +869,13 @@ func iSubmitATransactionToUpdateTheEntityChangingThePaylod(ctx context.Context) 
 		w.CreatedEntityKey,
 		100,
 		[]byte("new payload"),
-		[]entity.StringAnnotation{
+		[]storagetx.StringAnnotation{
 			{
 				Key:   "test_key",
 				Value: "test_value",
 			},
 		},
-		[]entity.NumericAnnotation{
+		[]storagetx.NumericAnnotation{
 			{
 				Key:   "test_number",
 				Value: 42,
@@ -967,27 +895,12 @@ func thePayloadOfTheEntityShouldBeChanged(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
 	rpcClient := w.GethInstance.RPCClient
 
-	var v []byte
-	if err := rpcClient.CallContext(
-		ctx,
-		&v,
-		"golembase_getStorageValue",
-		w.CreatedEntityKey,
-	); err != nil {
-		return fmt.Errorf("failed to get storage value: %w", err)
-	}
-
-	if string(v) != "new payload" {
-		return fmt.Errorf("unexpected storage value: %s", string(v))
-	}
-
-	entities := arkivtype.QueryResponse{}
+	entities := queryapi.QueryResponse{}
 	err := rpcClient.CallContext(
 		ctx,
 		&entities,
 		"arkiv_query",
 		fmt.Sprintf("$key = %s", w.CreatedEntityKey),
-		struct{}{},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to get storage value: %w", err)
@@ -997,7 +910,7 @@ func thePayloadOfTheEntityShouldBeChanged(ctx context.Context) error {
 		return fmt.Errorf("unexpected number of entities to retrieved: %d (expected 1)", len(entities.Data))
 	}
 
-	ed := arkivtype.EntityData{}
+	ed := queryapi.EntityData{}
 
 	err = json.Unmarshal(entities.Data[0], &ed)
 	if err != nil {
@@ -1023,13 +936,13 @@ func iSubmitATransactionToUpdateTheEntityChangingTheAnnotations(ctx context.Cont
 		w.CreatedEntityKey,
 		100,
 		[]byte("new payload"),
-		[]entity.StringAnnotation{
+		[]storagetx.StringAnnotation{
 			{
 				Key:   "test_key1",
 				Value: "test_value1",
 			},
 		},
-		[]entity.NumericAnnotation{
+		[]storagetx.NumericAnnotation{
 			{
 				Key:   "test_number1",
 				Value: 43,
@@ -1049,43 +962,24 @@ func theAnnotationsOfTheEntityShouldBeChanged(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
 	rpcClient := w.GethInstance.RPCClient
 
-	res := []golemtype.SearchResult{}
-	if err := rpcClient.CallContext(
-		ctx,
-		&res,
-		"golembase_queryEntities",
-		`test_key1="test_value1" && test_number1=43`,
-	); err != nil {
-		return fmt.Errorf("failed to get entities by numeric annotation: %w", err)
-	}
-
-	if len(res) == 0 {
-		return fmt.Errorf("could not find any result when searching by new annotations")
-	}
-
-	if res[0].Key != w.CreatedEntityKey {
-		return fmt.Errorf("expected entity hash %s but got %s", w.CreatedEntityKey.Hex(), res[0].Key.Hex())
-	}
-
-	res2 := arkivtype.QueryResponse{}
+	res := queryapi.QueryResponse{}
 	err := rpcClient.CallContext(
 		ctx,
-		&res2,
+		&res,
 		"arkiv_query",
 		`test_key1="test_value1" && test_number1=43`,
-		struct{}{},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to get entities by numeric annotation: %w", err)
 	}
 
-	if len(res2.Data) == 0 {
+	if len(res.Data) == 0 {
 		return fmt.Errorf("could not find any result when searching by new annotations")
 	}
 
-	ed := arkivtype.EntityData{}
+	ed := queryapi.EntityData{}
 
-	err = json.Unmarshal(res2.Data[0], &ed)
+	err = json.Unmarshal(res.Data[0], &ed)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal entity data: %w", err)
 	}
@@ -1101,7 +995,7 @@ func theAnnotationsOfTheEntityAtThePreviousBlockShouldNotBeChanged(ctx context.C
 	w := testutil.GetWorld(ctx)
 	rpcClient := w.GethInstance.RPCClient
 
-	res := arkivtype.QueryResponse{}
+	res := queryapi.QueryResponse{}
 
 	block, err := w.GethInstance.ETHClient.BlockNumber(ctx)
 	if err != nil {
@@ -1114,7 +1008,7 @@ func theAnnotationsOfTheEntityAtThePreviousBlockShouldNotBeChanged(ctx context.C
 		&res,
 		"arkiv_query",
 		`test_key = "test_value" && test_number=42`,
-		eth.QueryOptions{
+		queryapi.Options{
 			AtBlock: &atBlock,
 		},
 	)
@@ -1126,7 +1020,7 @@ func theAnnotationsOfTheEntityAtThePreviousBlockShouldNotBeChanged(ctx context.C
 		return fmt.Errorf("could not find any result when searching by new annotations")
 	}
 
-	ed := arkivtype.EntityData{}
+	ed := queryapi.EntityData{}
 
 	err = json.Unmarshal(res.Data[0], &ed)
 	if err != nil {
@@ -1152,13 +1046,13 @@ func iSubmitATransactionToUpdateTheEntityChangingTheBtlOfTheEntity(ctx context.C
 		w.CreatedEntityKey,
 		200,
 		[]byte("new payload"),
-		[]entity.StringAnnotation{
+		[]storagetx.StringAnnotation{
 			{
 				Key:   "test_key",
 				Value: "test_value",
 			},
 		},
-		[]entity.NumericAnnotation{
+		[]storagetx.NumericAnnotation{
 			{
 				Key:   "test_number",
 				Value: 42,
@@ -1179,31 +1073,12 @@ func theBtlOfTheEntityShouldBeChanged(ctx context.Context) error {
 	key := receipt.Logs[0].Topics[1]
 	rcpClient := w.GethInstance.RPCClient
 
-	toExpire := []common.Hash{}
-	if err := rcpClient.CallContext(
-		ctx,
-		&toExpire,
-		"golembase_getEntitiesToExpireAtBlock",
-		receipt.BlockNumber.Uint64()+200,
-	); err != nil {
-		return fmt.Errorf("failed to get entities to expire: %w", err)
-	}
-
-	if len(toExpire) != 1 {
-		return fmt.Errorf("unexpected number of entities to expire: %d (expected 1)", len(toExpire))
-	}
-
-	if toExpire[0] != key {
-		return fmt.Errorf("unexpected entity to expire: %s (expected %s)", toExpire[0].Hex(), key.Hex())
-	}
-
-	entities := arkivtype.QueryResponse{}
+	entities := queryapi.QueryResponse{}
 	err := rcpClient.CallContext(
 		ctx,
 		&entities,
 		"arkiv_query",
 		fmt.Sprintf("$expiration = %d", receipt.BlockNumber.Uint64()+200),
-		struct{}{},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to get entities to expire: %w", err)
@@ -1213,7 +1088,7 @@ func theBtlOfTheEntityShouldBeChanged(ctx context.Context) error {
 		return fmt.Errorf("unexpected number of entities to expire: %d (expected 1)", len(entities.Data))
 	}
 
-	ed := arkivtype.EntityData{}
+	ed := queryapi.EntityData{}
 
 	err = json.Unmarshal(entities.Data[0], &ed)
 	if err != nil {
@@ -1237,13 +1112,13 @@ func submitATransactionToCreateAnEntityOfK(ctx context.Context, kilobytes int) e
 		ctx,
 		200,
 		payload,
-		[]entity.StringAnnotation{
+		[]storagetx.StringAnnotation{
 			{
 				Key:   "test_key",
 				Value: "test_value",
 			},
 		},
-		[]entity.NumericAnnotation{
+		[]storagetx.NumericAnnotation{
 			{
 				Key:   "test_number",
 				Value: 42,
@@ -1272,32 +1147,20 @@ func iSearchForEntitiesWithTheQuery(ctx context.Context, queryDoc *godog.DocStri
 	w := testutil.GetWorld(ctx)
 	rcpClient := w.GethInstance.RPCClient
 
-	res := []golemtype.SearchResult{}
-	if err := rcpClient.CallContext(
-		ctx,
-		&res,
-		"golembase_queryEntities",
-		queryDoc.Content,
-	); err != nil {
-		return fmt.Errorf("failed to get entities by numeric annotation: %w", err)
-	}
-	w.SearchResult = res
-
-	res2 := arkivtype.QueryResponse{}
+	res := queryapi.QueryResponse{}
 	err := rcpClient.CallContext(
 		ctx,
-		&res2,
+		&res,
 		"arkiv_query",
 		queryDoc.Content,
-		struct{}{},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to get entities by numeric annotation: %w", err)
 	}
 
-	edList := []arkivtype.EntityData{}
-	for _, d := range res2.Data {
-		ed := arkivtype.EntityData{}
+	edList := []queryapi.EntityData{}
+	for _, d := range res.Data {
+		ed := queryapi.EntityData{}
 
 		err = json.Unmarshal(d, &ed)
 		if err != nil {
@@ -1380,13 +1243,13 @@ func thereIsAnEntityThatWillExpireInTheNextBlock(ctx context.Context) error {
 		ctx,
 		1,
 		[]byte("test payload"),
-		[]entity.StringAnnotation{
+		[]storagetx.StringAnnotation{
 			{
 				Key:   "test_key",
 				Value: "test_value",
 			},
 		},
-		[]entity.NumericAnnotation{
+		[]storagetx.NumericAnnotation{
 			{
 				Key:   "test_number",
 				Value: 42,
@@ -1451,13 +1314,12 @@ func theNumberOfEntitiesShouldBe(ctx context.Context, expected int) error {
 	w := testutil.GetWorld(ctx)
 	rpcClient := w.GethInstance.RPCClient
 
-	entities := arkivtype.QueryResponse{}
+	entities := queryapi.QueryResponse{}
 	err := rpcClient.CallContext(
 		ctx,
 		&entities,
 		"arkiv_query",
 		"$all",
-		struct{}{},
 	)
 
 	if err != nil {
@@ -1475,32 +1337,20 @@ func theEntityShouldBeInTheListOfAllEntities(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
 	rpcClient := w.GethInstance.RPCClient
 
-	var entityKeys []common.Hash
-	if err := rpcClient.CallContext(ctx, &entityKeys, "golembase_getAllEntityKeys"); err != nil {
-		return fmt.Errorf("failed to get all entity keys: %w", err)
-	}
-
-	found := slices.Contains(entityKeys, w.CreatedEntityKey)
-
-	if !found {
-		return fmt.Errorf("entity with key %s not found in the list of all entities", w.CreatedEntityKey.Hex())
-	}
-
-	entities := arkivtype.QueryResponse{}
+	entities := queryapi.QueryResponse{}
 	if err := rpcClient.CallContext(
 		ctx,
 		&entities,
 		"arkiv_query",
 		"$all",
-		struct{}{},
 	); err != nil {
 		return fmt.Errorf("failed to get entity count: %w", err)
 	}
 
-	found = false
+	found := false
 	for _, entity := range entities.Data {
 
-		ed := arkivtype.EntityData{}
+		ed := queryapi.EntityData{}
 
 		err := json.Unmarshal(entity, &ed)
 		if err != nil {
@@ -1523,13 +1373,12 @@ func theListOfAllEntitiesShouldBeEmpty(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
 	rpcClient := w.GethInstance.RPCClient
 
-	entities := arkivtype.QueryResponse{}
+	entities := queryapi.QueryResponse{}
 	err := rpcClient.CallContext(
 		ctx,
 		&entities,
 		"arkiv_query",
 		"$all",
-		struct{}{},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to get entity count: %w", err)
@@ -1546,23 +1395,7 @@ func theEntityShouldBeInTheListOfEntitiesOfTheOwner(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
 	rpcClient := w.GethInstance.RPCClient
 
-	var entityKeys []common.Hash
-	if err := rpcClient.CallContext(
-		ctx,
-		&entityKeys,
-		"golembase_getEntitiesOfOwner",
-		w.FundedAccount.Address,
-	); err != nil {
-		return fmt.Errorf("failed to get entities of owner: %w", err)
-	}
-
-	found := slices.Contains(entityKeys, w.CreatedEntityKey)
-
-	if !found {
-		return fmt.Errorf("entity with key %s not found in the list of entities of the owner", w.CreatedEntityKey.Hex())
-	}
-
-	entities := arkivtype.QueryResponse{}
+	entities := queryapi.QueryResponse{}
 	if err := rpcClient.CallContext(
 		ctx,
 		&entities,
@@ -1571,15 +1404,14 @@ func theEntityShouldBeInTheListOfEntitiesOfTheOwner(ctx context.Context) error {
 			"$owner = %s",
 			w.FundedAccount.Address,
 		),
-		struct{}{},
 	); err != nil {
 		return fmt.Errorf("failed to get entity count: %w", err)
 	}
 
-	found = false
+	found := false
 	for _, entity := range entities.Data {
 
-		ed := arkivtype.EntityData{}
+		ed := queryapi.EntityData{}
 
 		err := json.Unmarshal(entity, &ed)
 		if err != nil {
@@ -1602,16 +1434,7 @@ func theSenderShouldBeTheOwnerOfTheEntity(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
 	rpcClient := w.GethInstance.RPCClient
 
-	var ap entity.EntityMetaData
-	if err := rpcClient.CallContext(ctx, &ap, "golembase_getEntityMetaData", w.CreatedEntityKey.Hex()); err != nil {
-		return fmt.Errorf("failed to get entity metadata: %w", err)
-	}
-
-	if ap.Owner != w.FundedAccount.Address {
-		return fmt.Errorf("expected owner to be %s, but got %s", w.FundedAccount.Address.Hex(), ap.Owner.Hex())
-	}
-
-	entities := arkivtype.QueryResponse{}
+	entities := queryapi.QueryResponse{}
 	err := rpcClient.CallContext(
 		ctx,
 		&entities,
@@ -1620,7 +1443,6 @@ func theSenderShouldBeTheOwnerOfTheEntity(ctx context.Context) error {
 			"$key = %s",
 			w.CreatedEntityKey.Hex(),
 		),
-		struct{}{},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to get entity count: %w", err)
@@ -1630,7 +1452,7 @@ func theSenderShouldBeTheOwnerOfTheEntity(ctx context.Context) error {
 		return fmt.Errorf("unexpected number of entities retrieved: %d (expected 1)", len(entities.Data))
 	}
 
-	ed := arkivtype.EntityData{}
+	ed := queryapi.EntityData{}
 
 	err = json.Unmarshal(entities.Data[0], &ed)
 	if err != nil {
@@ -1648,21 +1470,7 @@ func theOwnerShouldNotHaveAnyEntities(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
 	rpcClient := w.GethInstance.RPCClient
 
-	var entityKeys []common.Hash
-	if err := rpcClient.CallContext(
-		ctx,
-		&entityKeys,
-		"golembase_getEntitiesOfOwner",
-		w.FundedAccount.Address,
-	); err != nil {
-		return fmt.Errorf("failed to get entity metadata: %w", err)
-	}
-
-	if len(entityKeys) != 0 {
-		return fmt.Errorf("expected 0 entities, but got %d", len(entityKeys))
-	}
-
-	entities := arkivtype.QueryResponse{}
+	entities := queryapi.QueryResponse{}
 	if err := rpcClient.CallContext(
 		ctx,
 		&entities,
@@ -1671,13 +1479,12 @@ func theOwnerShouldNotHaveAnyEntities(ctx context.Context) error {
 			"$owner = %s",
 			w.FundedAccount.Address,
 		),
-		struct{}{},
 	); err != nil {
 		return fmt.Errorf("failed to get entity count: %w", err)
 	}
 
 	if len(entities.Data) != 0 {
-		return fmt.Errorf("expected 0 entities, but got %d", len(entityKeys))
+		return fmt.Errorf("expected 0 entities, but got %d", len(entities.Data))
 	}
 
 	return nil
@@ -1762,10 +1569,10 @@ func iSubmitATransactionToUpdateTheEntityByNonowner(ctx context.Context) error {
 		w.CreatedEntityKey,
 		100,
 		[]byte("new payload"),
-		[]entity.StringAnnotation{
+		[]storagetx.StringAnnotation{
 			{Key: "test_key", Value: "test_value"},
 		},
-		[]entity.NumericAnnotation{},
+		[]storagetx.NumericAnnotation{},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to send tx to update entity: %w", err)
@@ -1781,13 +1588,13 @@ func thereAreTwoEntitiesThatWillExpireInTheNextBlock(ctx context.Context) error 
 		ctx,
 		2,
 		[]byte("test payload"),
-		[]entity.StringAnnotation{
+		[]storagetx.StringAnnotation{
 			{
 				Key:   "test_key",
 				Value: "test_value",
 			},
 		},
-		[]entity.NumericAnnotation{
+		[]storagetx.NumericAnnotation{
 			{
 				Key:   "test_number",
 				Value: 42,
@@ -1806,13 +1613,13 @@ func thereAreTwoEntitiesThatWillExpireInTheNextBlock(ctx context.Context) error 
 		ctx,
 		1,
 		[]byte("test payload2"),
-		[]entity.StringAnnotation{
+		[]storagetx.StringAnnotation{
 			{
 				Key:   "test_key",
 				Value: "test_value2",
 			},
 		},
-		[]entity.NumericAnnotation{
+		[]storagetx.NumericAnnotation{
 			{
 				Key:   "test_number",
 				Value: 42,
@@ -1834,31 +1641,15 @@ func thereAreTwoEntitiesThatWillExpireInTheNextBlock(ctx context.Context) error 
 func theExpiredEntitiesShouldBeDeleted(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
 
-	entities := []common.Hash{}
-
 	rcpClient := w.GethInstance.RPCClient
 
-	if err := rcpClient.CallContext(
-		ctx,
-		&entities,
-		"golembase_getEntitiesOfOwner",
-		w.FundedAccount.Address,
-	); err != nil {
-		return fmt.Errorf("failed to get entities of owner: %w", err)
-	}
-
-	if len(entities) != 0 {
-		return fmt.Errorf("expected 0 entities, but got %d", len(entities))
-	}
-
-	arkivEntities := arkivtype.QueryResponse{}
+	arkivEntities := queryapi.QueryResponse{}
 
 	if err := rcpClient.CallContext(
 		ctx,
 		&arkivEntities,
 		"arkiv_query",
 		fmt.Sprintf(`$owner = %s`, w.FundedAccount.Address),
-		struct{}{},
 	); err != nil {
 		return fmt.Errorf("failed to get entities of owner: %w", err)
 	}
@@ -1874,32 +1665,20 @@ func theExpiredEntitiesShouldBeDeleted(ctx context.Context) error {
 func iSearchForEntitiesOfAnOwner(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
 
-	res := []golemtype.SearchResult{}
-	if err := w.GethInstance.RPCClient.CallContext(
-		ctx,
-		&res,
-		"golembase_queryEntities",
-		fmt.Sprintf(`$owner = %s`, w.FundedAccount.Address.Hex()),
-	); err != nil {
-		return fmt.Errorf("failed to get entities of owner: %w", err)
-	}
-	w.SearchResult = res
-
-	res2 := arkivtype.QueryResponse{}
+	res := queryapi.QueryResponse{}
 	err := w.GethInstance.RPCClient.CallContext(
 		ctx,
-		&res2,
+		&res,
 		"arkiv_query",
 		fmt.Sprintf(`$owner = %s`, w.FundedAccount.Address.Hex()),
-		struct{}{},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to get entities of owner: %w", err)
 	}
 
-	edList := []arkivtype.EntityData{}
-	for _, d := range res2.Data {
-		ed := arkivtype.EntityData{}
+	edList := []queryapi.EntityData{}
+	for _, d := range res.Data {
+		ed := queryapi.EntityData{}
 
 		err = json.Unmarshal(d, &ed)
 		if err != nil {
@@ -1942,7 +1721,7 @@ func theNumberOfUsedSlotsShouldBe(ctx context.Context, expected int) error {
 	w := testutil.GetWorld(ctx)
 
 	var usedSlots hexutil.Big
-	err := w.GethInstance.RPCClient.CallContext(ctx, &usedSlots, "golembase_getNumberOfUsedSlots")
+	err := w.GethInstance.RPCClient.CallContext(ctx, &usedSlots, "arkiv_getNumberOfUsedSlots")
 	if err != nil {
 		return fmt.Errorf("failed to get used slots: %w", err)
 	}
@@ -1973,13 +1752,13 @@ func iUpdateTheEntity(ctx context.Context) error {
 		w.CreatedEntityKey,
 		100,
 		[]byte("updated payload"),
-		[]entity.StringAnnotation{
+		[]storagetx.StringAnnotation{
 			{
 				Key:   "updated_key",
 				Value: "updated_value",
 			},
 		},
-		[]entity.NumericAnnotation{
+		[]storagetx.NumericAnnotation{
 			{
 				Key:   "updated_number",
 				Value: 99,
@@ -2050,10 +1829,10 @@ func iHaveAStorageTransactionWithCreateUpdateDeleteAndExtendOperations(ctx conte
 				BTL:         100,
 				ContentType: "application/octet-stream",
 				Payload:     []byte("test payload"),
-				StringAnnotations: []entity.StringAnnotation{
+				StringAnnotations: []storagetx.StringAnnotation{
 					{Key: "type", Value: "test"},
 				},
-				NumericAnnotations: []entity.NumericAnnotation{
+				NumericAnnotations: []storagetx.NumericAnnotation{
 					{Key: "version", Value: 1},
 				},
 			},
@@ -2064,10 +1843,10 @@ func iHaveAStorageTransactionWithCreateUpdateDeleteAndExtendOperations(ctx conte
 				BTL:         200,
 				ContentType: "application/octet-stream",
 				Payload:     []byte("updated payload"),
-				StringAnnotations: []entity.StringAnnotation{
+				StringAnnotations: []storagetx.StringAnnotation{
 					{Key: "status", Value: "updated"},
 				},
-				NumericAnnotations: []entity.NumericAnnotation{
+				NumericAnnotations: []storagetx.NumericAnnotation{
 					{Key: "timestamp", Value: 1678901234},
 				},
 			},
@@ -2210,7 +1989,7 @@ func theCreateOperationHasAStringAnnotationWithKeyStartingWith(ctx context.Conte
 	if w.CurrentStorageTransaction == nil || len(w.CurrentStorageTransaction.Create) == 0 {
 		return fmt.Errorf("no create operation found")
 	}
-	w.CurrentStorageTransaction.Create[0].StringAnnotations = []entity.StringAnnotation{
+	w.CurrentStorageTransaction.Create[0].StringAnnotations = []storagetx.StringAnnotation{
 		{Key: keyPrefix + "invalid", Value: "test"},
 	}
 	return nil
@@ -2221,7 +2000,7 @@ func theCreateOperationHasDuplicateStringAnnotationKeys(ctx context.Context) err
 	if w.CurrentStorageTransaction == nil || len(w.CurrentStorageTransaction.Create) == 0 {
 		return fmt.Errorf("no create operation found")
 	}
-	w.CurrentStorageTransaction.Create[0].StringAnnotations = []entity.StringAnnotation{
+	w.CurrentStorageTransaction.Create[0].StringAnnotations = []storagetx.StringAnnotation{
 		{Key: "type", Value: "test1"},
 		{Key: "type", Value: "test2"},
 	}
@@ -2233,7 +2012,7 @@ func theCreateOperationHasDuplicateNumericAnnotationKeys(ctx context.Context) er
 	if w.CurrentStorageTransaction == nil || len(w.CurrentStorageTransaction.Create) == 0 {
 		return fmt.Errorf("no create operation found")
 	}
-	w.CurrentStorageTransaction.Create[0].NumericAnnotations = []entity.NumericAnnotation{
+	w.CurrentStorageTransaction.Create[0].NumericAnnotations = []storagetx.NumericAnnotation{
 		{Key: "version", Value: 1},
 		{Key: "version", Value: 2},
 	}
@@ -2245,7 +2024,7 @@ func theUpdateOperationHasDuplicateStringAnnotationKeys(ctx context.Context) err
 	if w.CurrentStorageTransaction == nil || len(w.CurrentStorageTransaction.Update) == 0 {
 		return fmt.Errorf("no update operation found")
 	}
-	w.CurrentStorageTransaction.Update[0].StringAnnotations = []entity.StringAnnotation{
+	w.CurrentStorageTransaction.Update[0].StringAnnotations = []storagetx.StringAnnotation{
 		{Key: "status", Value: "active"},
 		{Key: "status", Value: "inactive"},
 	}
@@ -2257,7 +2036,7 @@ func theUpdateOperationHasDuplicateNumericAnnotationKeys(ctx context.Context) er
 	if w.CurrentStorageTransaction == nil || len(w.CurrentStorageTransaction.Update) == 0 {
 		return fmt.Errorf("no update operation found")
 	}
-	w.CurrentStorageTransaction.Update[0].NumericAnnotations = []entity.NumericAnnotation{
+	w.CurrentStorageTransaction.Update[0].NumericAnnotations = []storagetx.NumericAnnotation{
 		{Key: "timestamp", Value: 1},
 		{Key: "timestamp", Value: 2},
 	}
@@ -2269,7 +2048,7 @@ func theCreateOperationHasStringAnnotationsWithKeys(ctx context.Context, key1, k
 	if w.CurrentStorageTransaction == nil || len(w.CurrentStorageTransaction.Create) == 0 {
 		return fmt.Errorf("no create operation found")
 	}
-	w.CurrentStorageTransaction.Create[0].StringAnnotations = []entity.StringAnnotation{
+	w.CurrentStorageTransaction.Create[0].StringAnnotations = []storagetx.StringAnnotation{
 		{Key: key1, Value: "value1"},
 		{Key: key2, Value: "value2"},
 		{Key: key3, Value: "value3"},
@@ -2282,7 +2061,7 @@ func theCreateOperationHasNumericAnnotationsWithKeys(ctx context.Context, key1, 
 	if w.CurrentStorageTransaction == nil || len(w.CurrentStorageTransaction.Create) == 0 {
 		return fmt.Errorf("no create operation found")
 	}
-	w.CurrentStorageTransaction.Create[0].NumericAnnotations = []entity.NumericAnnotation{
+	w.CurrentStorageTransaction.Create[0].NumericAnnotations = []storagetx.NumericAnnotation{
 		{Key: key1, Value: 1},
 		{Key: key2, Value: 2},
 	}
@@ -2294,7 +2073,7 @@ func theCreateOperationHasAStringAnnotationWithUnicodeKey(ctx context.Context, k
 	if w.CurrentStorageTransaction == nil || len(w.CurrentStorageTransaction.Create) == 0 {
 		return fmt.Errorf("no create operation found")
 	}
-	w.CurrentStorageTransaction.Create[0].StringAnnotations = []entity.StringAnnotation{
+	w.CurrentStorageTransaction.Create[0].StringAnnotations = []storagetx.StringAnnotation{
 		{Key: key, Value: "unicode value"},
 	}
 	return nil
@@ -2307,7 +2086,7 @@ func theCreateOperationHasAStringAnnotationWithKeyContainingSpecialCharactersLik
 	}
 	// Use the first special character
 	invalidKey := "invalid" + char1 + "key"
-	w.CurrentStorageTransaction.Create[0].StringAnnotations = []entity.StringAnnotation{
+	w.CurrentStorageTransaction.Create[0].StringAnnotations = []storagetx.StringAnnotation{
 		{Key: invalidKey, Value: "test"},
 	}
 	return nil
@@ -2318,7 +2097,7 @@ func theCreateOperationHasAStringAnnotationWithKeyStartingWithANumber(ctx contex
 	if w.CurrentStorageTransaction == nil || len(w.CurrentStorageTransaction.Create) == 0 {
 		return fmt.Errorf("no create operation found")
 	}
-	w.CurrentStorageTransaction.Create[0].StringAnnotations = []entity.StringAnnotation{
+	w.CurrentStorageTransaction.Create[0].StringAnnotations = []storagetx.StringAnnotation{
 		{Key: "123invalid", Value: "test"},
 	}
 	return nil
@@ -2365,7 +2144,7 @@ func anotherCreateOperationHasValidBTLAndAnnotations(ctx context.Context) error 
 		return fmt.Errorf("need at least 2 create operations")
 	}
 	// The second operation should remain valid
-	w.CurrentStorageTransaction.Create[1].StringAnnotations = []entity.StringAnnotation{
+	w.CurrentStorageTransaction.Create[1].StringAnnotations = []storagetx.StringAnnotation{
 		{Key: "valid_key", Value: "valid_value"},
 	}
 	return nil
@@ -2620,19 +2399,25 @@ func theOwnerOfTheEntityShouldBeChanged(ctx context.Context) error {
 
 	key := w.CreatedEntityKey
 
-	var e arkivtype.QueryResponse
+	var e queryapi.QueryResponse
 	err := rcpClient.CallContext(
 		ctx,
 		&e,
 		"arkiv_query",
 		fmt.Sprintf(`$key = %s`, key.Hex()),
-		struct{}{},
+		queryapi.Options{
+			IncludeData: &queryapi.IncludeData{
+				Key:     true,
+				Payload: true,
+				Owner:   true,
+			},
+		},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to get storage value: %w", err)
 	}
 
-	ed := arkivtype.EntityData{}
+	ed := queryapi.EntityData{}
 
 	err = json.Unmarshal(e.Data[0], &ed)
 	if err != nil {
@@ -2700,7 +2485,7 @@ func iSubmitAnArkivTransactionWithEmptyContentAndOneAnnotation(ctx context.Conte
 				BTL:         1000,
 				ContentType: "application/octet-stream",
 				Payload:     []byte{},
-				StringAnnotations: []entity.StringAnnotation{
+				StringAnnotations: []storagetx.StringAnnotation{
 					{Key: "type", Value: "test"},
 				},
 			},

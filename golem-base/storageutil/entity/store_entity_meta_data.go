@@ -1,27 +1,19 @@
 package entity
 
 import (
-	"bytes"
-	"fmt"
-
-	"github.com/ethereum/go-ethereum/arkiv/compression"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/golem-base/storageutil/stateblob"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/ethereum/go-ethereum/golem-base/address"
 )
 
 func StoreEntityMetaData(access StateAccess, key common.Hash, emd EntityMetaData) error {
-	hash := crypto.Keccak256Hash(EntityMetaDataSalt, key[:])
 
-	buf := new(bytes.Buffer)
-	err := rlp.Encode(buf, &emd)
-	if err != nil {
-		return fmt.Errorf("failed to encode entity meta data: %w", err)
-	}
+	access.SetState(
+		address.ArkivProcessorAddress,
+		crypto.Keccak256Hash(EntityMetaDataSalt, key[:]),
+		emd.Marshal(),
+	)
 
-	compressed := compression.MustBrotliCompress(buf.Bytes())
-
-	stateblob.SetBlob(access, hash, compressed)
 	return nil
+
 }
