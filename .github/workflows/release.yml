@@ -51,12 +51,14 @@ jobs:
           go-version: "1.23.0"
 
       - name: Build binaries
+        shell: bash
         run: |
           mkdir -p build
-          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
             go build -o build/geth${{ matrix.ext }} ./cmd/geth
-          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
             go build -o build/golembase${{ matrix.ext }} ./cmd/golembase
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
 
       - name: Package archive
         run: |
