@@ -68,23 +68,18 @@ jobs:
           mkdir -p dist/$pkg
           cp build/geth* dist/$pkg/
           cp build/golembase* dist/$pkg/
-
-          if [ "${{ matrix.goos }}" = "windows" ]; then
-            (cd dist && zip -r "${pkg}.zip" "$pkg")
-          else
-            (cd dist && tar -czvf "${pkg}.tar.gz" "$pkg")
-          fi
+          (cd dist && tar -czvf "${pkg}.tar.gz" "$pkg")
 
       - name: Generate SHA256 checksums
         run: |
           cd dist
           if [ "${{ matrix.os }}" = "macos-latest" ]; then
-            for f in *.tar.gz *.zip; do
+            for f in *.tar.gz; do
               [ -e "$f" ] || continue
               shasum -a 256 "$f" | awk '{print $1}' > "$f.sha256"
             done
           else
-            for f in *.tar.gz *.zip; do
+            for f in *.tar.gz; do
               [ -e "$f" ] || continue
               sha256sum "$f" > "$f.sha256"
             done
