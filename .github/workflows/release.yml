@@ -76,13 +76,17 @@ jobs:
       - name: Generate SHA256 checksums
         run: |
           cd dist
-          for f in *.{tar.gz,zip}; do
-            if command -v sha256sum &> /dev/null; then
-              sha256sum "$f" > "$f.sha256"
-            else
+          if [ "${{ matrix.os }}" = "macos-latest" ]; then
+            for f in *.tar.gz *.zip; do
+              [ -e "$f" ] || continue
               shasum -a 256 "$f" | awk '{print $1}' > "$f.sha256"
-            fi
-          done
+            done
+          else
+            for f in *.tar.gz *.zip; do
+              [ -e "$f" ] || continue
+              sha256sum "$f" > "$f.sha256"
+            done
+          fi
 
       - name: Upload tarballs
         uses: actions/upload-artifact@v4
