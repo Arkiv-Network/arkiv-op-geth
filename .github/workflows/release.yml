@@ -17,6 +17,9 @@ env:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     strategy:
       matrix:
         include:
@@ -51,7 +54,6 @@ jobs:
           go-version: "1.23.0"
 
       - name: Build binaries
-        shell: bash
         run: |
           mkdir -p build
             go build -o build/geth${{ matrix.ext }} ./cmd/geth
