@@ -64,7 +64,8 @@ jobs:
         run: |
           pkg="${PACKAGE_PREFIX}-${TAG#v}-${{ matrix.goos }}-${{ matrix.goarch }}"
           mkdir -p dist/$pkg
-          cp build/* dist/$pkg/
+          cp build/geth* dist/$pkg/
+          cp build/golembase* dist/$pkg/
 
           if [ "${{ matrix.goos }}" = "windows" ]; then
             (cd dist && zip -r "${pkg}.zip" "$pkg")
