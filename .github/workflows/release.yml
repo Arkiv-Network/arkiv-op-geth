@@ -101,10 +101,10 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          path: release-binaries
+          path: release-assets
 
-      - name: List artifacts
-        run: ls -lhaR release-binaries
+      - name: List assets
+        run: ls -lhaR release-assets
 
       - name: Create Git tag
         run: |
@@ -115,6 +115,7 @@ jobs:
           git push origin $TAG
 
       - name: Create Release
+        id: create-release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -122,4 +123,114 @@ jobs:
           tag_name: ${{ env.TAG }}
           release_name: ${{ env.TAG }}
           draft: true
-          files: release-binaries/*/*.tar.gz,release-binaries/*/*.tar.gz.sha256
+
+      - name: Upload darwin-amd64 tarball
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_PLATFORM: darwin-amd64
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release-assets/${{ env.TARGET_PLATFORM }}/${{ env.PACKAGE_PREFIX }}-${{ env.TAG }}-${{ env.TARGET_PLATFORM }}.tar.gz
+          asset_name: ${{ env.PACKAGE_PREFIX }}-${{ env.TAG }}-${{ env.TARGET_PLATFORM }}.tar.gz
+          asset_content_type: application/gzip
+      
+      - name: Upload darwin-amd64 checksum
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_PLATFORM: darwin-amd64
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release-assets/${{ env.TARGET_PLATFORM }}/${{ env.PACKAGE_PREFIX }}-${{ env.TAG }}-${{ env.TARGET_PLATFORM }}.tar.gz.sha256
+          asset_name: ${{ env.PACKAGE_PREFIX }}-${{ env.TAG }}-${{ env.TARGET_PLATFORM }}.tar.gz.sha256
+          asset_content_type: text/plain
+      
+      - name: Upload darwin-arm64 tarball
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_PLATFORM: darwin-arm64
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release-assets/${{ env.TARGET_PLATFORM }}/${{ env.PACKAGE_PREFIX }}-${{ env.TAG }}-${{ env.TARGET_PLATFORM }}.tar.gz
+          asset_name: ${{ env.PACKAGE_PREFIX }}-${{ env.TAG }}-${{ env.TARGET_PLATFORM }}.tar.gz
+          asset_content_type: application/gzip
+      
+      - name: Upload darwin-arm64 checksum
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_PLATFORM: darwin-arm64
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release-assets/${{ env.TARGET_PLATFORM }}/${{ env.PACKAGE_PREFIX }}-${{ env.TAG }}-${{ env.TARGET_PLATFORM }}.tar.gz.sha256
+          asset_name: ${{ env.PACKAGE_PREFIX }}-${{ env.TAG }}-${{ env.TARGET_PLATFORM }}.tar.gz.sha256
+          asset_content_type: text/plain
+      
+      - name: Upload linux-amd64 tarball
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_PLATFORM: linux-amd64
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release-assets/${{ env.TARGET_PLATFORM }}/${{ env.PACKAGE_PREFIX }}-${{ env.TAG }}-${{ env.TARGET_PLATFORM }}.tar.gz
+          asset_name: ${{ env.PACKAGE_PREFIX }}-${{ env.TAG }}-${{ env.TARGET_PLATFORM }}.tar.gz
+          asset_content_type: application/gzip
+      
+      - name: Upload linux-amd64 checksum
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_PLATFORM: linux-amd64
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release-assets/${{ env.TARGET_PLATFORM }}/${{ env.PACKAGE_PREFIX }}-${{ env.TAG }}-${{ env.TARGET_PLATFORM }}.tar.gz.sha256
+          asset_name: ${{ env.PACKAGE_PREFIX }}-${{ env.TAG }}-${{ env.TARGET_PLATFORM }}.tar.gz.sha256
+          asset_content_type: text/plain
+      
+      - name: Upload linux-arm64 tarball
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_PLATFORM: linux-arm64
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release-assets/${{ env.TARGET_PLATFORM }}/${{ env.PACKAGE_PREFIX }}-${{ env.TAG }}-${{ env.TARGET_PLATFORM }}.tar.gz
+          asset_name: ${{ env.PACKAGE_PREFIX }}-${{ env.TAG }}-${{ env.TARGET_PLATFORM }}.tar.gz
+          asset_content_type: application/gzip
+      
+      - name: Upload linux-arm64 checksum
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_PLATFORM: linux-arm64
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release-assets/${{ env.TARGET_PLATFORM }}/${{ env.PACKAGE_PREFIX }}-${{ env.TAG }}-${{ env.TARGET_PLATFORM }}.tar.gz.sha256
+          asset_name: ${{ env.PACKAGE_PREFIX }}-${{ env.TAG }}-${{ env.TARGET_PLATFORM }}.tar.gz.sha256
+          asset_content_type: text/plain
+      
+      - name: Upload windows-amd64 tarball
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_PLATFORM: windows-amd64
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release-assets/${{ env.TARGET_PLATFORM }}/${{ env.PACKAGE_PREFIX }}-${{ env.TAG }}-${{ env.TARGET_PLATFORM }}.tar.gz
+          asset_name: ${{ env.PACKAGE_PREFIX }}-${{ env.TAG }}-${{ env.TARGET_PLATFORM }}.tar.gz
+          asset_content_type: application/gzip
+      
+      - name: Upload windows-amd64 checksum
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_PLATFORM: windows-amd64
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release-assets/${{ env.TARGET_PLATFORM }}/${{ env.PACKAGE_PREFIX }}-${{ env.TAG }}-${{ env.TARGET_PLATFORM }}.tar.gz.sha256
+          asset_name: ${{ env.PACKAGE_PREFIX }}-${{ env.TAG }}-${{ env.TARGET_PLATFORM }}.tar.gz.sha256
+          asset_content_type: text/plain
+            
