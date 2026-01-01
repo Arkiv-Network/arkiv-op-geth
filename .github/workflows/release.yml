@@ -106,20 +106,20 @@ jobs:
       - name: List artifacts
         run: ls -lhaR release-binaries
 
-      # - name: Create Git tag
-      #   run: |
-      #     git config user.name "github-actions[bot]"
-      #     git config user.email "github-actions[bot]@users.noreply.github.com"
-      #     git fetch --tags
-      #     git tag $TAG
-      #     git push origin $TAG
+      - name: Create Git tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch --tags
+          git tag $TAG
+          git push origin $TAG
 
-      # - name: Create Release
-      #   uses: actions/create-release@v1
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   with:
-      #     tag_name: ${{ env.TAG }}
-      #     release_name: ${{ env.TAG }}
-      #     draft: true
-      #     files: release-binaries/*/*
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.TAG }}
+          release_name: ${{ env.TAG }}
+          draft: true
+          files: release-binaries/*/*.tar.gz,release-binaries/*/*.tar.gz.sha256
