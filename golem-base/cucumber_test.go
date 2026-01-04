@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	queryapi "github.com/Arkiv-Network/query-api/query"
+	queryapi "github.com/Arkiv-Network/sqlite-store/query"
 	"github.com/cucumber/godog"
 	"github.com/cucumber/godog/colors"
 	"github.com/ethereum/go-ethereum/arkiv/compression"

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	queryapi "github.com/Arkiv-Network/query-api/query"
+	queryapi "github.com/Arkiv-Network/sqlite-store/query"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/golem-base/storagetx"

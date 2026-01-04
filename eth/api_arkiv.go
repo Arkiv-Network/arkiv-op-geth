@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
-	queryapi "github.com/Arkiv-Network/query-api/query"
 	sqlitestore "github.com/Arkiv-Network/sqlite-store"
+	queryapi "github.com/Arkiv-Network/sqlite-store/query"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/golem-base/storageaccounting"
 	"github.com/ethereum/go-ethereum/log"
@@ -41,7 +41,7 @@ func (api *arkivAPI) Query(
 		op.AtBlock = &lastBlock
 	}
 
-	response, err := api.store.QueryEntities(ctx, req, op, "sqlite")
+	response, err := api.store.QueryEntities(ctx, req, op)
 	if err != nil {
 		return nil, fmt.Errorf("error executing query: %w", err)
 	}
