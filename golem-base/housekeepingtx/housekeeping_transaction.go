@@ -58,7 +58,7 @@ func ExecuteTransaction(blockNumber uint64, txHash common.Hash, db vm.StateDB) (
 					toDelete,
 					addressToHash(owner),
 				},
-				Data:        []byte{},
+				Data:        toDelete.Bytes(),
 				BlockNumber: blockNumber,
 			},
 		)
