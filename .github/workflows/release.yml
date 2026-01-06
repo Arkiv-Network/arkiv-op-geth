@@ -115,8 +115,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch --tags
-          git tag "${{ github.event.inputs.force-create-tag == 'true' ? "-f" : "" }}" $TAG 
-          git push "${{ github.event.inputs.force-create-tag == 'true' ? "-f" : "" }}" origin $TAG
+          git tag "${{ github.event.inputs.force-create-tag == 'true' && "-f" || "" }}" $TAG 
+          git push "${{ github.event.inputs.force-create-tag == 'true' && "-f" || "" }}" origin $TAG
 
       - name: Create Release
         id: create_release
