@@ -127,5 +127,5 @@ jobs:
           tag: ${{ env.TAG }}
           allowUpdates: true
           generateReleaseNotes: true
-          artifacts: release-assets/*/*.tar.gz,release-assets/*/*.tar.gz.sha256
+          artifacts: release-assets/*/*.tar.gz{,.sha256}
           draft: true
