@@ -233,7 +233,7 @@ The Arkiv RPC API provides methods to query and retrieve entity data. Implementa
 
 1. `queryExpression` (string): Query expression parsed by the query engine
 2. `options` (QueryOptions object):
-   - `atBlock` (uint64, optional): Historical block number for query
+   - `atBlock` (uint64, `0x` prefixed, hex encoded string): Historical block number for query
    - `includeData` (IncludeData object, optional): Which fields to return
    - `orderBy` (array, optional): Ordering by attributes
    - `resultsPerPage` (uint64, optional): Pagination limit
