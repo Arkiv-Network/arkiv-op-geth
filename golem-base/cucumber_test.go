@@ -1002,7 +1002,7 @@ func theAnnotationsOfTheEntityAtThePreviousBlockShouldNotBeChanged(ctx context.C
 		"arkiv_query",
 		`test_key = "test_value" && test_number=42`,
 		sqlitestore.Options{
-			AtBlock: &atBlock,
+			AtBlock: (*hexutil.Uint64)(&atBlock),
 		},
 	)
 	if err != nil {

@@ -1,7 +1,7 @@
 github.com/Arkiv-Network/arkiv-events v0.0.4 h1:8WWhhVMHIkBIn1fAst/qH4Sl3KBVvrErQkkZ2Rd6gk4=
 github.com/Arkiv-Network/arkiv-events v0.0.4/go.mod h1:LaYW4FqA95Rhp/SKTAF8+FEK7cazJDRBXPXl7I90NRc=
-github.com/Arkiv-Network/sqlite-bitmap-store v0.0.2 h1:/0sp8HoUDya2p8h4U1sWQw8Eqiwm0ANS2Z/JG7wgcPU=
-github.com/Arkiv-Network/sqlite-bitmap-store v0.0.2/go.mod h1:k8R2CIbs2hPm6mpZX8Kxf0ytaoHMXnXgPYn467oG5kI=
+github.com/Arkiv-Network/sqlite-bitmap-store v0.0.4 h1:NrxEHG7DvgopBehU1mOsPAp+3hpUwwZUUs5mXu75UzQ=
+github.com/Arkiv-Network/sqlite-bitmap-store v0.0.4/go.mod h1:k8R2CIbs2hPm6mpZX8Kxf0ytaoHMXnXgPYn467oG5kI=
 github.com/Azure/azure-sdk-for-go/sdk/azcore v1.7.0 h1:8q4SaHjFsClSvuVne0ID/5Ka8u3fcIHyqkLjcFpNRHQ=
 github.com/Azure/azure-sdk-for-go/sdk/azcore v1.7.0/go.mod h1:bjGvMhVMb+EEm3VRNQawDMUyMMjo+S5ewNjflkep/0Q=
 github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.3.0 h1:vcYCAze6p19qBW7MhZybIsqD8sMV8js0NyQM8JDnVtg=

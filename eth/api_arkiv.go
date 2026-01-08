@@ -37,7 +37,7 @@ func (api *arkivAPI) Query(
 		op = &sqlitestore.Options{}
 	}
 	if op.AtBlock == nil {
-		op.AtBlock = &lastBlock
+		op.AtBlock = (*hexutil.Uint64)(&lastBlock)
 	}
 
 	response, err := api.store.QueryEntities(ctx, req, op)
