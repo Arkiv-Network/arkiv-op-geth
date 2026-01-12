@@ -57,4 +57,3 @@ cmd/rlpdump/rlpdump
 cmd/workload/workload
 
 **/sqlstate.db
-**/golem-base.db*
