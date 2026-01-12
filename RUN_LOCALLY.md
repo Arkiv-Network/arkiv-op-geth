@@ -11,9 +11,6 @@ This guide explains how to run OP-Geth locally in [dev mode](https://geth.ethere
 The docker-compose file defines the following services:
 
 - **op-geth**: The main Ethereum node service running in [dev mode](https://geth.ethereum.org/docs/developers/dapp-developer/dev-mode)
-- **mongodb**: MongoDB instance configured with replica set
-- **mongodb-etl**: Service for syncing blockchain data to MongoDB
-- **sqlite-etl**: Service for syncing blockchain data to SQLite
 - **rpcplorer**: Web interface for exploring blockchain data
 
 ### Supporting Services
@@ -48,21 +45,6 @@ Additionally the following supporting service is included:
 - Supports various APIs: eth, web3, net, debug, golembase
 - Uses write-ahead logging for data persistence
 
-### MongoDB
-- Version: 8.0.6
-- Configured with replica set (rs0)
-- Exposes port 27017 (Note: If you already have an instance of MongoDB running, you will want to either shut it down, or change the host port number here, which is the first in the pair.)
-- Uses authentication (admin/password)
-- Includes health checks for replica set status
-
-### MongoDB ETL
-- Syncs blockchain data to MongoDB
-- Depends on both op-geth and MongoDB services
-
-### SQLite ETL
-- Syncs blockchain data to SQLite database
-- Depends on op-geth service
-
 ### RPC Explorer
 - Web interface for exploring blockchain data
 - Exposes port 8080 (Note: If port 8080 is already in use on your machine, change the host port number, which is the first in the pair.)
@@ -76,21 +58,16 @@ Additionally the following supporting service is included:
 - **Smart Search:** Instant navigation using the search bar that automatically detects and redirects to addresses, transactions, or blocks.
 - **Real-time Updates:** Auto-refreshing display of latest blocks and transactions.
 
-You can learn more [here](https://github.com/arkiv/rpcplorer).
+You can learn more [here](https://github.com/Golem-Base/rpcplorer).
 
 ## Volumes
 
 The following volumes are created by the docker-compose file and managed by Docker Compose:
-- `mongodb_keyfile`: Stores MongoDB replica set keyfile
-- `mongodb_data`: Persistent storage for MongoDB data
-- `golembase_wal`: Write-ahead log storage
-- `golembase_sqlite`: SQLite database storage
 - `geth_data`: OP-Geth data storage
 
 ## Ports
 
 - 8545: OP-Geth RPC
-- 27017: MongoDB
 - 8080: RPC Explorer
 
 ## Building with Latest Changes
