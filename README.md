@@ -12,7 +12,7 @@ Our fork manages entities that are structured indexed data objects stored on-cha
 
 We also have added RPC methods to search and retrieve stored data.
 
-For details on our Golem Base storage layer, please visit the [README.md](./golem-base/README.md) found in the [golem-base folder](./golem-base/).
+For details on our Golem Base storage layer, please visit the [README.md](./arkiv/README.md) found in the [golem-base folder](./arkiv/).
 
 ## 🏃 Running Locally
 

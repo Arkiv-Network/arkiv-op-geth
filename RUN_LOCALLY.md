@@ -76,7 +76,7 @@ Additionally the following supporting service is included:
 - **Smart Search:** Instant navigation using the search bar that automatically detects and redirects to addresses, transactions, or blocks.
 - **Real-time Updates:** Auto-refreshing display of latest blocks and transactions.
 
-You can learn more [here](https://github.com/Golem-Base/rpcplorer).
+You can learn more [here](https://github.com/arkiv/rpcplorer).
 
 ## Volumes
 

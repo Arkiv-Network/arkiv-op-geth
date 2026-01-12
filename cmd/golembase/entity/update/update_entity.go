@@ -7,14 +7,14 @@ import (
 	"os/signal"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/arkiv/address"
 	"github.com/ethereum/go-ethereum/arkiv/compression"
+	arkivlogs "github.com/ethereum/go-ethereum/arkiv/logs"
+	"github.com/ethereum/go-ethereum/arkiv/storagetx"
 	"github.com/ethereum/go-ethereum/cmd/golembase/account/pkg/useraccount"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/golem-base/address"
-	arkivlogs "github.com/ethereum/go-ethereum/golem-base/logs"
-	"github.com/ethereum/go-ethereum/golem-base/storagetx"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/urfave/cli/v2"
 )
