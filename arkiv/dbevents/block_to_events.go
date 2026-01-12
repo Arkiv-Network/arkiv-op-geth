@@ -4,11 +4,11 @@ import (
 	"fmt"
 
 	"github.com/Arkiv-Network/arkiv-events/events"
+	"github.com/ethereum/go-ethereum/arkiv/address"
+	"github.com/ethereum/go-ethereum/arkiv/logs"
+	"github.com/ethereum/go-ethereum/arkiv/storagetx"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/golem-base/address"
-	"github.com/ethereum/go-ethereum/golem-base/logs"
-	"github.com/ethereum/go-ethereum/golem-base/storagetx"
 )
 
 func blockToEvents(rawBlock *types.Block, rawReceipts []*types.Receipt) (*events.Block, error) {

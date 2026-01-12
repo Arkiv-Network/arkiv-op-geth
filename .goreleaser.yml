@@ -1,6 +1,6 @@
 version: 2
 
-project_name: golembase
+project_name: arkiv
 before:
   hooks:
     - go mod tidy

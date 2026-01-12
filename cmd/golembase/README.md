@@ -44,7 +44,7 @@ The CLI follows the XDG Base Directory Specification for storing configuration f
   - Execute custom queries using the Golem Base query language
   - Search entities by annotations
   - Retrieve entity metadata
-  - For detailed query syntax and examples, see the [Query Language Support section](../../golem-base/README.md#query-language-support)
+  - For detailed query syntax and examples, see the [Query Language Support section](../../arkiv/README.md#query-language-support)
 
 ### Entity Content Display
 
@@ -75,4 +75,4 @@ golembase entity create --data "custom data" --btl 200
 golembase cat <entity-key>
 ```
 
-For more detailed information about the Golem Base system, refer to the main [README.md](../../golem-base/README.md). 
+For more detailed information about the Golem Base system, refer to the main [README.md](../../arkiv/README.md). 

@@ -171,7 +171,7 @@ func XTestEth2AssembleBlockWithAnotherBlocksTxs(t *testing.T) {
 }
 
 func TestSetHeadBeforeTotalDifficulty(t *testing.T) {
-	t.Skip("Golem: test disabled")
+	t.Skip("Arkiv: test disabled")
 	genesis, blocks := generateMergeChain(10, false)
 	n, ethservice := startEthService(t, genesis, blocks)
 	defer n.Close()
@@ -1013,7 +1013,7 @@ func TestSimultaneousNewBlock(t *testing.T) {
 // TestWithdrawals creates and verifies two post-Shanghai blocks. The first
 // includes zero withdrawals and the second includes two.
 func TestWithdrawals(t *testing.T) {
-	t.Skip("Golem: skipping withdrawals test, becase it got broken by our code")
+	t.Skip("Arkiv: skipping withdrawals test, becase it got broken by our code")
 	genesis, blocks := generateMergeChain(10, true)
 	// Set shanghai time to last block + 5 seconds (first post-merge block)
 	time := blocks[len(blocks)-1].Time() + 5

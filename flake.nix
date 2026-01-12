@@ -1,5 +1,5 @@
 {
-  description = "Golem Base L3 Store Prototype";
+  description = "Arkiv OP Geth";
   inputs = {
     nixpkgs.url = "https://channels.nixos.org/nixos-unstable/nixexprs.tar.xz";
 

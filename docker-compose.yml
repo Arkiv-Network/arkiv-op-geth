@@ -8,11 +8,11 @@ services:
       - "8545:8545"
     volumes:
       - geth_data:/geth_data
-      - ~/golembase_config:/root/.config/golembase
+      - ~/arkiv_config:/root/.config/arkiv
     command: >
       --dev 
       --http 
-      --http.api 'eth,web3,net,debug,golembase,arkiv' 
+      --http.api 'eth,web3,net,debug,arkiv'
       --verbosity 3 
       --http.addr '0.0.0.0' 
       --http.port 8545 

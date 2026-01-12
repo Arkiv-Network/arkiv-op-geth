@@ -26,8 +26,8 @@ jobs:
             if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
               docker buildx build \
                 --platform linux/amd64 \
-                --tag golemnetwork/golembase-op-geth:$SHORT_COMMIT-amd64 \
-                --tag golemnetwork/golembase-op-geth:latest-amd64 \
+                --tag golemnetwork/arkiv-op-geth:$SHORT_COMMIT-amd64 \
+                --tag golemnetwork/arkiv-op-geth:latest-amd64 \
                 --push \
                 .
             fi
@@ -37,8 +37,8 @@ jobs:
               TAG=${GITHUB_REF#refs/tags/}
               docker buildx build \
                 --platform linux/amd64 \
-                --tag golemnetwork/golembase-op-geth:$SHORT_COMMIT-amd64 \
-                --tag golemnetwork/golembase-op-geth:$TAG-amd64 \
+                --tag golemnetwork/arkiv-op-geth:$SHORT_COMMIT-amd64 \
+                --tag golemnetwork/arkiv-op-geth:$TAG-amd64 \
                 --push \
                 .
             fi
@@ -46,7 +46,7 @@ jobs:
             # For PRs, just build the image but don't push it
             docker buildx build \
               --platform linux/amd64 \
-              --tag golemnetwork/golembase-op-geth:pr-test-amd64 \
+              --tag golemnetwork/arkiv-op-geth:pr-test-amd64 \
               .
           fi
 
@@ -68,8 +68,8 @@ jobs:
             if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
               docker buildx build \
                 --platform linux/arm64 \
-                --tag golemnetwork/golembase-op-geth:$SHORT_COMMIT-arm64 \
-                --tag golemnetwork/golembase-op-geth:latest-arm64 \
+                --tag golemnetwork/arkiv-op-geth:$SHORT_COMMIT-arm64 \
+                --tag golemnetwork/arkiv-op-geth:latest-arm64 \
                 --push \
                 .
             fi
@@ -79,8 +79,8 @@ jobs:
               TAG=${GITHUB_REF#refs/tags/}
               docker buildx build \
                 --platform linux/arm64 \
-                --tag golemnetwork/golembase-op-geth:$SHORT_COMMIT-arm64 \
-                --tag golemnetwork/golembase-op-geth:$TAG-arm64 \
+                --tag golemnetwork/arkiv-op-geth:$SHORT_COMMIT-arm64 \
+                --tag golemnetwork/arkiv-op-geth:$TAG-arm64 \
                 --push \
                 .
             fi
@@ -88,7 +88,7 @@ jobs:
             # For PRs, just build the image but don't push it
             docker buildx build \
               --platform linux/arm64 \
-              --tag golemnetwork/golembase-op-geth:pr-test-arm64 \
+              --tag golemnetwork/arkiv-op-geth:pr-test-arm64 \
               .
           fi
 
@@ -112,15 +112,15 @@ jobs:
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             # Create manifest for commit SHA
             docker buildx imagetools create \
-              --tag golemnetwork/golembase-op-geth:$SHORT_COMMIT \
-              golemnetwork/golembase-op-geth:$SHORT_COMMIT-amd64 \
-              golemnetwork/golembase-op-geth:$SHORT_COMMIT-arm64
+              --tag golemnetwork/arkiv-op-geth:$SHORT_COMMIT \
+              golemnetwork/arkiv-op-geth:$SHORT_COMMIT-amd64 \
+              golemnetwork/arkiv-op-geth:$SHORT_COMMIT-arm64
             
             # Create manifest for latest
             docker buildx imagetools create \
-              --tag golemnetwork/golembase-op-geth:latest \
-              golemnetwork/golembase-op-geth:latest-amd64 \
-              golemnetwork/golembase-op-geth:latest-arm64
+              --tag golemnetwork/arkiv-op-geth:latest \
+              golemnetwork/arkiv-op-geth:latest-amd64 \
+              golemnetwork/arkiv-op-geth:latest-arm64
           fi
           
           # If this is a tag (release), create manifest for the tag
@@ -129,13 +129,13 @@ jobs:
             
             # Create manifest for commit SHA
             docker buildx imagetools create \
-              --tag golemnetwork/golembase-op-geth:$SHORT_COMMIT \
-              golemnetwork/golembase-op-geth:$SHORT_COMMIT-amd64 \
-              golemnetwork/golembase-op-geth:$SHORT_COMMIT-arm64
+              --tag golemnetwork/arkiv-op-geth:$SHORT_COMMIT \
+              golemnetwork/arkiv-op-geth:$SHORT_COMMIT-amd64 \
+              golemnetwork/arkiv-op-geth:$SHORT_COMMIT-arm64
             
             # Create manifest for tag
             docker buildx imagetools create \
-              --tag golemnetwork/golembase-op-geth:$TAG \
-              golemnetwork/golembase-op-geth:$TAG-amd64 \
-              golemnetwork/golembase-op-geth:$TAG-arm64
+              --tag golemnetwork/arkiv-op-geth:$TAG \
+              golemnetwork/arkiv-op-geth:$TAG-amd64 \
+              golemnetwork/arkiv-op-geth:$TAG-arm64
           fi

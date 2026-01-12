@@ -558,7 +558,7 @@ func TestGzipHandler(t *testing.T) {
 
 func TestHTTPWriteTimeout(t *testing.T) {
 
-	t.Skip("Golem: skipped because it's flaky")
+	t.Skip("Arkiv: skipped because it's flaky")
 
 	const (
 		timeoutRes = `{"jsonrpc":"2.0","id":1,"error":{"code":-32002,"message":"request timed out"}}`

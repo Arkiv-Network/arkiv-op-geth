@@ -6,8 +6,8 @@ import (
 	"math/big"
 
 	sqlitestore "github.com/Arkiv-Network/sqlite-bitmap-store"
+	"github.com/ethereum/go-ethereum/arkiv/storageaccounting"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/golem-base/storageaccounting"
 	"github.com/ethereum/go-ethereum/log"
 )
 
