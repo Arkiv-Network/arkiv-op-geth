@@ -51,7 +51,12 @@ func (api *arkivAPI) Query(
 // GetEntityCount returns the total number of entities in the storage.
 func (api *arkivAPI) GetEntityCount(ctx context.Context) (uint64, error) {
 
-	return 0, nil
+	count, err := api.store.GetNumberOfEntities(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get entity count: %w", err)
+	}
+	return count, nil
+
 }
 
 func (api *arkivAPI) GetNumberOfUsedSlots() (*hexutil.Big, error) {

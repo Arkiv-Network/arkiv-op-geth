@@ -49,7 +49,7 @@
             ];
 
             proxyVendor = true;
-            vendorHash = "sha256-C8CCLMwN5MYIQ/3eQbVAJe5MPA8XgI9A2DFVVe4biDo=";
+            vendorHash = "sha256-UPPQlP827vG6jLhltU6K2aX98nYjOOXna97uRhHcw+c=";
 
             ldflags = [
               "-s"
@@ -68,7 +68,7 @@
             name = "golembase";
             src = ./.;
             subPackages = [ "cmd/golembase" ];
-            vendorHash = "sha256-qkIg7Gks+4LvhlUR0+D6qjMQd7lcrybkbln4fPuAAKw=";
+            vendorHash = "sha256-uf6I2Npq+hXheQIiXR4z3aUeWr8pvv7e4ho21GjORqw=";
             meta = with lib; {
               description = "golembase CLI - Golem Base";
               homepage = "https://github.com/Golem-Base/golembase-op-geth";
