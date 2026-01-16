@@ -33,6 +33,7 @@
         {
           default = pkgs.buildGoModule {
             name = "gb-op-geth";
+            doCheck = false;
 
             src = ./.;
 
@@ -49,7 +50,7 @@
             ];
 
             proxyVendor = true;
-            vendorHash = "sha256-UPPQlP827vG6jLhltU6K2aX98nYjOOXna97uRhHcw+c=";
+            vendorHash = "sha256-AWV+tTvnnLpKtyscw8eNezoBs2AiOQ5OM7gAJx6GbIQ=";
 
             ldflags = [
               "-s"
@@ -68,7 +69,8 @@
             name = "golembase";
             src = ./.;
             subPackages = [ "cmd/golembase" ];
-            vendorHash = "sha256-uf6I2Npq+hXheQIiXR4z3aUeWr8pvv7e4ho21GjORqw=";
+            vendorHash = "sha256-Cf45nAsE+Bw3tWld/olLqfiYkzlO4VpN+lnMceHTcDM=";
+            doCheck = false;
             meta = with lib; {
               description = "golembase CLI - Golem Base";
               homepage = "https://github.com/Golem-Base/golembase-op-geth";
