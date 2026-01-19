@@ -1307,8 +1307,22 @@ func theNumberOfEntitiesShouldBe(ctx context.Context, expected int) error {
 	w := testutil.GetWorld(ctx)
 	rpcClient := w.GethInstance.RPCClient
 
-	entities := sqlitestore.QueryResponse{}
+	count := uint64(0)
 	err := rpcClient.CallContext(
+		ctx,
+		&count,
+		"arkiv_getEntityCount",
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to get entity count: %w", err)
+	}
+	if count != uint64(expected) {
+		return fmt.Errorf("expected %d entities, but got %d", expected, count)
+	}
+
+	entities := sqlitestore.QueryResponse{}
+	err = rpcClient.CallContext(
 		ctx,
 		&entities,
 		"arkiv_query",
