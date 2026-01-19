@@ -118,17 +118,17 @@
         "templ": "templ"
       },
       "locked": {
-        "lastModified": 1762771434,
-        "narHash": "sha256-ZzwQGeI4HzV1LPKlbGAfAC402b7GtYD4dpKGICl819M=",
-        "owner": "Golem-Base",
+        "lastModified": 1768821250,
+        "narHash": "sha256-0YWw91N5V7EgZ5KnzKIRuZQg9x3avbhHMS3g/qVXX14=",
+        "owner": "Arkiv-Network",
         "repo": "rpcplorer",
-        "rev": "1021adbfc765d9c36d565907cda7e5e48c6b597b",
+        "rev": "85647d1144d48c0598248b61d3006bf22860ed50",
         "type": "github"
       },
       "original": {
-        "owner": "Golem-Base",
+        "owner": "Arkiv-Network",
+        "ref": "v0.0.5",
         "repo": "rpcplorer",
-        "rev": "1021adbfc765d9c36d565907cda7e5e48c6b597b",
         "type": "github"
       }
     },

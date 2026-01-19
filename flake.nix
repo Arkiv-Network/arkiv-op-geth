@@ -6,8 +6,7 @@
     systems.url = "github:nix-systems/default";
 
     rpcplorer = {
-      # TODO: switch back to a release once the commit below was released
-      url = "github:Golem-Base/rpcplorer?ref=1021adbfc765d9c36d565907cda7e5e48c6b597b";
+      url = "github:Arkiv-Network/rpcplorer?ref=v0.0.5";
       inputs = {
         systems.follows = "systems";
         nixpkgs.follows = "nixpkgs";
