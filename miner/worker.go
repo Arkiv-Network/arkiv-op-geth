@@ -77,11 +77,12 @@ type environment struct {
 	// OP-Stack addition: DA footprint block limit
 	daFootprintGasScalar uint16
 
-	header   *types.Header
-	txs      []*types.Transaction
-	receipts []*types.Receipt
-	sidecars []*types.BlobTxSidecar
-	blobs    int
+	header    *types.Header
+	txs       []*types.Transaction
+	receipts  []*types.Receipt
+	logsCount int
+	sidecars  []*types.BlobTxSidecar
+	blobs     int
 
 	witness *stateless.Witness
 
@@ -270,6 +271,8 @@ func (miner *Miner) generateWork(genParam *generateParams, witness bool) *newPay
 		witness:  work.witness,
 	}
 }
+
+const logsBudget = 2000
 
 // prepareWork constructs the sealing task according to the given parameters,
 // either based on the last chain head or specified parent. In this function
@@ -463,6 +466,7 @@ func (miner *Miner) commitTransaction(env *environment, tx *types.Transaction) e
 	}
 	env.txs = append(env.txs, tx)
 	env.receipts = append(env.receipts, receipt)
+	env.logsCount += len(receipt.Logs)
 	env.size += tx.Size()
 	env.tcount++
 	return nil
@@ -488,6 +492,7 @@ func (miner *Miner) commitBlobTransaction(env *environment, tx *types.Transactio
 	txNoBlob := tx.WithoutBlobTxSidecar()
 	env.txs = append(env.txs, txNoBlob)
 	env.receipts = append(env.receipts, receipt)
+	env.logsCount += len(receipt.Logs)
 	env.sidecars = append(env.sidecars, sc)
 	env.blobs += len(sc.Blobs)
 	env.size += txNoBlob.Size()
@@ -752,6 +757,11 @@ func (miner *Miner) fillTransactions(interrupt *atomic.Int32, env *environment) 
 		if err := miner.commitTransactions(env, plainTxs, blobTxs, interrupt); err != nil {
 			return err
 		}
+
+		if len(env.receipts) > logsBudget {
+			log.Info("Max logs budget reached", "logs", env.logsCount, "block", env.header.Number)
+			return nil
+		}
 	}
 	if len(normalPlainTxs) > 0 || len(normalBlobTxs) > 0 {
 		plainTxs := newTransactionsByPriceAndNonce(env.signer, normalPlainTxs, env.header.BaseFee)
@@ -759,6 +769,11 @@ func (miner *Miner) fillTransactions(interrupt *atomic.Int32, env *environment) 
 
 		if err := miner.commitTransactions(env, plainTxs, blobTxs, interrupt); err != nil {
 			return err
+		}
+
+		if len(env.receipts) > logsBudget {
+			log.Info("Max logs budget reached", "logs", env.logsCount, "block", env.header.Number)
+			return nil
 		}
 	}
 	return nil
