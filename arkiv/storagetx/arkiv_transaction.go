@@ -50,6 +50,11 @@ type ExtendBTL struct {
 
 func (tx *ArkivTransaction) Validate() error {
 
+	numberOfOperations := len(tx.Create) + len(tx.Update) + len(tx.Delete) + len(tx.Extend) + len(tx.ChangeOwner)
+	if numberOfOperations > 1000 {
+		return fmt.Errorf("number of operations is greater than 1000")
+	}
+
 	for i, create := range tx.Create {
 		if create.BTL == 0 {
 			return fmt.Errorf("create BTL is 0")
