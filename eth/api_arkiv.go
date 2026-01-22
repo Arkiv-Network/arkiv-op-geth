@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"time"
 
 	sqlitestore "github.com/Arkiv-Network/sqlite-bitmap-store"
 	"github.com/ethereum/go-ethereum/arkiv/storageaccounting"
@@ -28,22 +29,22 @@ func (api *arkivAPI) Query(
 	req string,
 	op *sqlitestore.Options,
 ) (*sqlitestore.QueryResponse, error) {
-
-	lastBlock := api.eth.blockchain.CurrentHeader().Number.Uint64()
-
-	log.Info("api", "last_block", lastBlock)
-
 	if op == nil {
 		op = &sqlitestore.Options{}
 	}
 	if op.AtBlock == nil {
+		lastBlock := api.eth.blockchain.CurrentHeader().Number.Uint64()
 		op.AtBlock = &lastBlock
 	}
 
+	startTime := time.Now()
 	response, err := api.store.QueryEntities(ctx, req, op)
 	if err != nil {
 		return nil, fmt.Errorf("error executing query: %w", err)
 	}
+	elapsed := time.Since(startTime)
+
+	log.Info("arkiv api", "query", req, "block", op.GetAtBlock(), "responses", len(response.Data), "elapsed_ms", elapsed.Milliseconds())
 
 	return response, nil
 }

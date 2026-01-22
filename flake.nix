@@ -6,8 +6,7 @@
     systems.url = "github:nix-systems/default";
 
     rpcplorer = {
-      # TODO: switch back to a release once the commit below was released
-      url = "github:Golem-Base/rpcplorer?ref=1021adbfc765d9c36d565907cda7e5e48c6b597b";
+      url = "github:Arkiv-Network/rpcplorer?ref=v0.0.5";
       inputs = {
         systems.follows = "systems";
         nixpkgs.follows = "nixpkgs";
@@ -50,7 +49,7 @@
             ];
 
             proxyVendor = true;
-            vendorHash = "sha256-AWV+tTvnnLpKtyscw8eNezoBs2AiOQ5OM7gAJx6GbIQ=";
+            vendorHash = "sha256-SnKxVmbW1jtqYIr744gwYLVoXR3iiFRzgYg4hjZRabo=";
 
             ldflags = [
               "-s"
@@ -69,7 +68,7 @@
             name = "golembase";
             src = ./.;
             subPackages = [ "cmd/golembase" ];
-            vendorHash = "sha256-Cf45nAsE+Bw3tWld/olLqfiYkzlO4VpN+lnMceHTcDM=";
+            vendorHash = "sha256-/svRyMtwHpQiYmuyjIIMwP6zzdAtg9RJYzK/b1IkBKo=";
             doCheck = false;
             meta = with lib; {
               description = "golembase CLI - Golem Base";
