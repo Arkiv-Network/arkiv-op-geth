@@ -231,6 +231,8 @@ func InitializeScenario(ctx *godog.ScenarioContext) {
 	ctx.Step(`^the transaction should succeed$`, theTransactionShouldSucceed)
 
 	ctx.Step(`^the transaction should be rejected$`, theTransactionShouldBeRejected)
+	ctx.Step(`^I submit a storage transaction with (\d+) operations$`, iSubmitAStorageTransactionWithOperations)
+	ctx.Step(`^last error should mention "([^"]*)"$`, lastErrorShouldMention)
 
 }
 
@@ -2539,5 +2541,55 @@ func theTransactionShouldBeRejected(ctx context.Context) error {
 		return fmt.Errorf("expected error to contain 'failed to unpack arkiv transaction: failed to decode storage transaction', but got: %s", w.LastError.Error())
 	}
 
+	return nil
+}
+
+func iSubmitAStorageTransactionWithOperations(ctx context.Context, count int) error {
+
+	w := testutil.GetWorld(ctx)
+
+	storageTx := &storagetx.ArkivTransaction{
+		Create: []storagetx.ArkivCreate{},
+	}
+
+	for range count {
+		storageTx.Create = append(storageTx.Create, storagetx.ArkivCreate{
+			BTL:         100,
+			ContentType: "application/octet-stream",
+			Payload:     []byte("test payload"),
+			StringAnnotations: []storagetx.StringAnnotation{
+				{
+					Key:   "test_key",
+					Value: "test_value",
+				},
+			},
+			NumericAnnotations: []storagetx.NumericAnnotation{
+				{
+					Key:   "test_number",
+					Value: 42,
+				},
+			},
+		})
+	}
+
+	err := w.SubmitStorageTransaction(
+		ctx,
+		storageTx,
+	)
+
+	w.LastError = err
+
+	return nil
+
+}
+
+func lastErrorShouldMention(ctx context.Context, mention string) error {
+	w := testutil.GetWorld(ctx)
+	if w.LastError == nil {
+		return fmt.Errorf("no error found")
+	}
+	if !strings.Contains(w.LastError.Error(), mention) {
+		return fmt.Errorf("expected error to contain '%s', but got: %v", mention, w.LastError)
+	}
 	return nil
 }

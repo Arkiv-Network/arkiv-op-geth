@@ -669,7 +669,7 @@ func (pool *LegacyPool) ValidateTxBasics(tx *types.Transaction) error {
 			return fmt.Errorf("failed to unpack arkiv transaction: %w", err)
 		}
 
-		tx.Validate()
+		err = tx.Validate()
 		if err != nil {
 			return fmt.Errorf("failed to validate arkiv transaction: %w", err)
 		}
