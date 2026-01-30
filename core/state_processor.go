@@ -156,6 +156,8 @@ func ApplyTransactionWithEVM(msg *Message, gp *GasPool, statedb *state.StateDB, 
 
 		if tx.To() != nil && *tx.To() == address.ArkivProcessorAddress {
 
+			snapshot := statedb.Snapshot()
+
 			logs, err := storagetx.ExecuteArkivTransaction(
 				tx.Data(),
 				blockNumber.Uint64(),
@@ -168,6 +170,7 @@ func ApplyTransactionWithEVM(msg *Message, gp *GasPool, statedb *state.StateDB, 
 			status := types.ReceiptStatusSuccessful
 			if err != nil {
 				status = types.ReceiptStatusFailed
+				statedb.RevertToSnapshot(snapshot)
 			}
 
 			fakeReceipt := &types.Receipt{
