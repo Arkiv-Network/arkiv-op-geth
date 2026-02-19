@@ -34,7 +34,7 @@ func (api *arkivAPI) Query(
 	}
 	if op.AtBlock == nil {
 		lastBlock := api.eth.blockchain.CurrentHeader().Number.Uint64()
-		op.AtBlock = &lastBlock
+		op.AtBlock = (*hexutil.Uint64)(&lastBlock)
 	}
 
 	startTime := time.Now()
