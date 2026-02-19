@@ -1,0 +1,43 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.4'
+          # This automatically caches ~/go/pkg/mod and ~/.cache/go-build
+          cache: true
+
+      - name: Build binary
+        # We call make; Go will now pull from the cache instead of the network
+        run: make
+
+      - name: Compress binary
+        run: |
+          mv ./build/bin/geth op-geth
+          tar -cJf arkiv-op-geth-${{ github.ref_name }}-linux-amd64.tar.xz op-geth
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: arkiv-op-geth-*.tar.xz
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
