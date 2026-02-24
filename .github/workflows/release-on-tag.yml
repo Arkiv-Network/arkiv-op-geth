@@ -41,3 +41,17 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  start-performance-tests:
+    needs: build-and-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Performance Tests
+        run: |
+          echo "Triggering performance tests for release ${{ github.ref_name }}"
+          # Here you can add commands to trigger your performance tests, e.g., via API calls or other means
+          BEARER=${{ secrets.TEST_TRACKER_BEARER_KEY }}
+          URL=${{ secrets.TEST_TRACKER_URL }}/public/test/run/OpGethBuild
+
+          curl -X POST -H "Authorization: Bearer $BEARER" -f -s $URL
+
