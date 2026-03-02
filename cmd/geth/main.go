@@ -134,6 +134,8 @@ var (
 		utils.MinerExtraDataFlag,
 		utils.MinerRecommitIntervalFlag,
 		utils.MinerPendingFeeRecipientFlag,
+		utils.MinerMaxDATxSizeFlag,
+		utils.MinerMaxDABlockSizeFlag,
 		utils.MinerNewPayloadTimeoutFlag, // deprecated
 		utils.NATFlag,
 		utils.NoDiscoverFlag,

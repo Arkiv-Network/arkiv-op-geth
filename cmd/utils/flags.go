@@ -624,6 +624,18 @@ var (
 		Usage:    "0x prefixed public address for the pending block producer (not used for actual block production)",
 		Category: flags.MinerCategory,
 	}
+	MinerMaxDATxSizeFlag = &flags.BigFlag{
+		Name:     "miner.maxdatxsize",
+		Usage:    "Maximum data availability size allowed for a single transaction (in bytes). 0 means no maximum.",
+		Value:    new(big.Int),
+		Category: flags.MinerCategory,
+	}
+	MinerMaxDABlockSizeFlag = &flags.BigFlag{
+		Name:     "miner.maxdablocksize",
+		Usage:    "Maximum total data availability size allowed for a block (in bytes). 0 means no maximum.",
+		Value:    new(big.Int),
+		Category: flags.MinerCategory,
+	}
 
 	// Account settings
 	PasswordFileFlag = &cli.PathFlag{
@@ -1804,6 +1816,22 @@ func setMiner(ctx *cli.Context, cfg *miner.Config) {
 	}
 	if ctx.IsSet(RollupComputePendingBlock.Name) {
 		cfg.RollupComputePendingBlock = ctx.Bool(RollupComputePendingBlock.Name)
+	}
+	if ctx.IsSet(MinerMaxDATxSizeFlag.Name) {
+		v := flags.GlobalBig(ctx, MinerMaxDATxSizeFlag.Name)
+		if v != nil && v.BitLen() > 0 {
+			cfg.MaxDATxSize = v
+		} else {
+			cfg.MaxDATxSize = nil
+		}
+	}
+	if ctx.IsSet(MinerMaxDABlockSizeFlag.Name) {
+		v := flags.GlobalBig(ctx, MinerMaxDABlockSizeFlag.Name)
+		if v != nil && v.BitLen() > 0 {
+			cfg.MaxDABlockSize = v
+		} else {
+			cfg.MaxDABlockSize = nil
+		}
 	}
 }
 
