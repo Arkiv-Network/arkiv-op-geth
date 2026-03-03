@@ -1106,7 +1106,7 @@ func (pool *LegacyPool) addTxsLocked(txs []*types.Transaction) ([]error, *accoun
 		for _, filter := range pool.ingressFilters {
 			if !filter.FilterTx(pool.filterCtx, tx) {
 				errs[i] = core.ErrTxFilteredOut
-				log.Trace("Discarding filtered transaction", "hash", tx.Hash())
+				log.Warn("Discarding filtered transaction", "hash", tx.Hash())
 				invalidTxMeter.Mark(1)
 				filtered = true
 				break
