@@ -538,7 +538,7 @@ func (miner *Miner) commitTransactions(env *environment, plainTxs, blobTxs *tran
 		}
 		// If we don't have enough gas for any further transactions then we're done.
 		if env.gasPool.Gas() < params.TxGas {
-			log.Trace("Not enough gas for further transactions", "have", env.gasPool, "want", params.TxGas)
+			log.Warn("Not enough gas for further transactions", "have", env.gasPool, "want", params.TxGas)
 			break
 		}
 
@@ -547,7 +547,7 @@ func (miner *Miner) commitTransactions(env *environment, plainTxs, blobTxs *tran
 			daFootprintLeft = gasLimit - *env.header.BlobGasUsed
 			// If we don't have enough DA space for any further transactions then we're done.
 			if daFootprintLeft < minTransactionDAFootprint {
-				log.Debug("Not enough DA space for further transactions", "have", daFootprintLeft, "want", minTransactionDAFootprint)
+				log.Warn("Not enough DA space for further transactions", "have", daFootprintLeft, "want", minTransactionDAFootprint)
 				break
 			}
 		}
@@ -584,7 +584,7 @@ func (miner *Miner) commitTransactions(env *environment, plainTxs, blobTxs *tran
 		}
 		// If we don't have enough space for the next transaction, skip the account.
 		if env.gasPool.Gas() < ltx.Gas {
-			log.Trace("Not enough gas left for transaction", "hash", ltx.Hash, "left", env.gasPool.Gas(), "needed", ltx.Gas)
+			log.Warn("Not enough gas left for transaction", "hash", ltx.Hash, "left", env.gasPool.Gas(), "needed", ltx.Gas)
 			txs.Pop()
 			continue
 		}
@@ -595,7 +595,7 @@ func (miner *Miner) commitTransactions(env *environment, plainTxs, blobTxs *tran
 		if isCancun {
 			left := eip4844.MaxBlobsPerBlock(miner.chainConfig, env.header.Time) - env.blobs
 			if left < int(ltx.BlobGas/params.BlobTxBlobGasPerBlob) {
-				log.Trace("Not enough blob space left for transaction", "hash", ltx.Hash, "left", left, "needed", ltx.BlobGas/params.BlobTxBlobGasPerBlob)
+				log.Warn("Not enough blob space left for transaction", "hash", ltx.Hash, "left", left, "needed", ltx.BlobGas/params.BlobTxBlobGasPerBlob)
 				txs.Pop()
 				continue
 			}
@@ -608,7 +608,7 @@ func (miner *Miner) commitTransactions(env *environment, plainTxs, blobTxs *tran
 		if isJovian {
 			txDAFootprint = ltx.DABytes.Uint64() * uint64(env.daFootprintGasScalar)
 			if daFootprintLeft < txDAFootprint {
-				log.Debug("Not enough DA space left for transaction", "hash", ltx.Hash, "left", daFootprintLeft, "needed", txDAFootprint)
+				log.Warn("Not enough DA space left for transaction", "hash", ltx.Hash, "left", daFootprintLeft, "needed", txDAFootprint)
 				txs.Pop()
 				continue
 			}
@@ -619,7 +619,7 @@ func (miner *Miner) commitTransactions(env *environment, plainTxs, blobTxs *tran
 		if ltx.DABytes != nil && miner.config.MaxDABlockSize != nil {
 			daBytesAfter.Add(blockDABytes, ltx.DABytes)
 			if daBytesAfter.Cmp(miner.config.MaxDABlockSize) > 0 {
-				log.Debug("adding tx would exceed block DA size limit",
+				log.Warn("adding tx would exceed block DA size limit",
 					"hash", ltx.Hash, "txda", ltx.DABytes, "blockda", blockDABytes, "dalimit", miner.config.MaxDABlockSize)
 				txs.Pop()
 				// If the number of remaining bytes is too few to hold even the minimum possible transaction size,
@@ -652,7 +652,7 @@ func (miner *Miner) commitTransactions(env *environment, plainTxs, blobTxs *tran
 		// Check whether the tx is replay protected. If we're not in the EIP155 hf
 		// phase, start ignoring the sender until we do.
 		if tx.Protected() && !miner.chainConfig.IsEIP155(env.header.Number) {
-			log.Trace("Ignoring replay protected transaction", "hash", ltx.Hash, "eip155", miner.chainConfig.EIP155Block)
+			log.Warn("Ignoring replay protected transaction", "hash", ltx.Hash, "eip155", miner.chainConfig.EIP155Block)
 			txs.Pop()
 			continue
 		}
@@ -663,7 +663,7 @@ func (miner *Miner) commitTransactions(env *environment, plainTxs, blobTxs *tran
 		switch {
 		case errors.Is(err, core.ErrNonceTooLow):
 			// New head notification data race between the transaction pool and miner, shift
-			log.Trace("Skipping transaction with low nonce", "hash", ltx.Hash, "sender", from, "nonce", tx.Nonce())
+			log.Warn("Skipping transaction with low nonce", "hash", ltx.Hash, "sender", from, "nonce", tx.Nonce())
 			txs.Shift()
 
 		case errors.Is(err, errTxConditionalInvalid):
@@ -694,7 +694,7 @@ func (miner *Miner) commitTransactions(env *environment, plainTxs, blobTxs *tran
 		default:
 			// Transaction is regarded as invalid, drop all consecutive transactions from
 			// the same sender because of `nonce-too-high` clause.
-			log.Debug("Transaction failed, account skipped", "hash", ltx.Hash, "err", err)
+			log.Warn("Transaction failed, account skipped", "hash", ltx.Hash, "err", err)
 			txs.Pop()
 		}
 	}
@@ -727,6 +727,8 @@ func (miner *Miner) fillTransactions(interrupt *atomic.Int32, env *environment) 
 	filter.BlobTxs = false
 	pendingPlainTxs := miner.txpool.Pending(filter)
 
+	log.Info("Pending plain transactions", "count", len(pendingPlainTxs))
+
 	filter.BlobTxs = true
 	if miner.chainConfig.IsOsaka(env.header.Number, env.header.Time) {
 		filter.BlobVersion = types.BlobSidecarVersion1
@@ -754,7 +756,10 @@ func (miner *Miner) fillTransactions(interrupt *atomic.Int32, env *environment) 
 		plainTxs := newTransactionsByPriceAndNonce(env.signer, prioPlainTxs, env.header.BaseFee)
 		blobTxs := newTransactionsByPriceAndNonce(env.signer, prioBlobTxs, env.header.BaseFee)
 
+		log.Info("Commiting transactions with prioPlainTxs", "count", len(prioPlainTxs))
+
 		if err := miner.commitTransactions(env, plainTxs, blobTxs, interrupt); err != nil {
+
 			return err
 		}
 
@@ -766,8 +771,10 @@ func (miner *Miner) fillTransactions(interrupt *atomic.Int32, env *environment) 
 	if len(normalPlainTxs) > 0 || len(normalBlobTxs) > 0 {
 		plainTxs := newTransactionsByPriceAndNonce(env.signer, normalPlainTxs, env.header.BaseFee)
 		blobTxs := newTransactionsByPriceAndNonce(env.signer, normalBlobTxs, env.header.BaseFee)
+		log.Info("Commiting transactions with normalPlainTxs", "count", len(normalPlainTxs))
 
 		if err := miner.commitTransactions(env, plainTxs, blobTxs, interrupt); err != nil {
+			log.Warn("Failed to commit normalPlainTxs transactions", "err", err)
 			return err
 		}
 
