@@ -6,6 +6,14 @@ on:
   release:
     types: [published]
 
+env:
+  DOCKERHUB_IMAGE: golemnetwork/arkiv-op-geth
+  GHCR_IMAGE: ghcr.io/${{ github.repository }}
+
+permissions:
+  contents: read
+  packages: write
+
 jobs:
 
   build-amd64:
@@ -14,9 +22,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Login to Docker Registry
+      - name: Login to Docker Hub
         run: |
           echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+      - name: Login to GitHub Container Registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
       - name: Build and push AMD64 Docker image
         run: |
           # Only build and push docker images for main branch and tags, not for PRs
@@ -26,8 +37,10 @@ jobs:
             if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
               docker buildx build \
                 --platform linux/amd64 \
-                --tag golemnetwork/arkiv-op-geth:$SHORT_COMMIT-amd64 \
-                --tag golemnetwork/arkiv-op-geth:latest-amd64 \
+                --tag ${{ env.DOCKERHUB_IMAGE }}:$SHORT_COMMIT-amd64 \
+                --tag ${{ env.DOCKERHUB_IMAGE }}:latest-amd64 \
+                --tag ${{ env.GHCR_IMAGE }}:$SHORT_COMMIT-amd64 \
+                --tag ${{ env.GHCR_IMAGE }}:latest-amd64 \
                 --push \
                 .
             fi
@@ -37,8 +50,10 @@ jobs:
               TAG=${GITHUB_REF#refs/tags/}
               docker buildx build \
                 --platform linux/amd64 \
-                --tag golemnetwork/arkiv-op-geth:$SHORT_COMMIT-amd64 \
-                --tag golemnetwork/arkiv-op-geth:$TAG-amd64 \
+                --tag ${{ env.DOCKERHUB_IMAGE }}:$SHORT_COMMIT-amd64 \
+                --tag ${{ env.DOCKERHUB_IMAGE }}:$TAG-amd64 \
+                --tag ${{ env.GHCR_IMAGE }}:$SHORT_COMMIT-amd64 \
+                --tag ${{ env.GHCR_IMAGE }}:$TAG-amd64 \
                 --push \
                 .
             fi
@@ -46,7 +61,7 @@ jobs:
             # For PRs, just build the image but don't push it
             docker buildx build \
               --platform linux/amd64 \
-              --tag golemnetwork/arkiv-op-geth:pr-test-amd64 \
+              --tag ${{ env.DOCKERHUB_IMAGE }}:pr-test-amd64 \
               .
           fi
 
@@ -56,9 +71,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Login to Docker Registry
+      - name: Login to Docker Hub
         run: |
           echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+      - name: Login to GitHub Container Registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
       - name: Build and push ARM64 Docker image
         run: |
           # Only build and push docker images for main branch and tags, not for PRs
@@ -68,8 +86,10 @@ jobs:
             if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
               docker buildx build \
                 --platform linux/arm64 \
-                --tag golemnetwork/arkiv-op-geth:$SHORT_COMMIT-arm64 \
-                --tag golemnetwork/arkiv-op-geth:latest-arm64 \
+                --tag ${{ env.DOCKERHUB_IMAGE }}:$SHORT_COMMIT-arm64 \
+                --tag ${{ env.DOCKERHUB_IMAGE }}:latest-arm64 \
+                --tag ${{ env.GHCR_IMAGE }}:$SHORT_COMMIT-arm64 \
+                --tag ${{ env.GHCR_IMAGE }}:latest-arm64 \
                 --push \
                 .
             fi
@@ -79,8 +99,10 @@ jobs:
               TAG=${GITHUB_REF#refs/tags/}
               docker buildx build \
                 --platform linux/arm64 \
-                --tag golemnetwork/arkiv-op-geth:$SHORT_COMMIT-arm64 \
-                --tag golemnetwork/arkiv-op-geth:$TAG-arm64 \
+                --tag ${{ env.DOCKERHUB_IMAGE }}:$SHORT_COMMIT-arm64 \
+                --tag ${{ env.DOCKERHUB_IMAGE }}:$TAG-arm64 \
+                --tag ${{ env.GHCR_IMAGE }}:$SHORT_COMMIT-arm64 \
+                --tag ${{ env.GHCR_IMAGE }}:$TAG-arm64 \
                 --push \
                 .
             fi
@@ -88,7 +110,7 @@ jobs:
             # For PRs, just build the image but don't push it
             docker buildx build \
               --platform linux/arm64 \
-              --tag golemnetwork/arkiv-op-geth:pr-test-arm64 \
+              --tag ${{ env.DOCKERHUB_IMAGE }}:pr-test-arm64 \
               .
           fi
 
@@ -102,9 +124,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      - name: Login to Docker Registry
+      - name: Login to Docker Hub
         run: |
           echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+      - name: Login to GitHub Container Registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
       - name: Create and push multi-platform manifests
         run: |
           SHORT_COMMIT=$(git rev-parse --short HEAD)
@@ -112,15 +137,27 @@ jobs:
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             # Create manifest for commit SHA
             docker buildx imagetools create \
-              --tag golemnetwork/arkiv-op-geth:$SHORT_COMMIT \
-              golemnetwork/arkiv-op-geth:$SHORT_COMMIT-amd64 \
-              golemnetwork/arkiv-op-geth:$SHORT_COMMIT-arm64
+              --tag ${{ env.DOCKERHUB_IMAGE }}:$SHORT_COMMIT \
+              ${{ env.DOCKERHUB_IMAGE }}:$SHORT_COMMIT-amd64 \
+              ${{ env.DOCKERHUB_IMAGE }}:$SHORT_COMMIT-arm64
             
             # Create manifest for latest
             docker buildx imagetools create \
-              --tag golemnetwork/arkiv-op-geth:latest \
-              golemnetwork/arkiv-op-geth:latest-amd64 \
-              golemnetwork/arkiv-op-geth:latest-arm64
+              --tag ${{ env.DOCKERHUB_IMAGE }}:latest \
+              ${{ env.DOCKERHUB_IMAGE }}:latest-amd64 \
+              ${{ env.DOCKERHUB_IMAGE }}:latest-arm64
+
+            # Create GHCR manifest for commit SHA
+            docker buildx imagetools create \
+              --tag ${{ env.GHCR_IMAGE }}:$SHORT_COMMIT \
+              ${{ env.GHCR_IMAGE }}:$SHORT_COMMIT-amd64 \
+              ${{ env.GHCR_IMAGE }}:$SHORT_COMMIT-arm64
+            
+            # Create GHCR manifest for latest
+            docker buildx imagetools create \
+              --tag ${{ env.GHCR_IMAGE }}:latest \
+              ${{ env.GHCR_IMAGE }}:latest-amd64 \
+              ${{ env.GHCR_IMAGE }}:latest-arm64
           fi
           
           # If this is a tag (release), create manifest for the tag
@@ -129,13 +166,25 @@ jobs:
             
             # Create manifest for commit SHA
             docker buildx imagetools create \
-              --tag golemnetwork/arkiv-op-geth:$SHORT_COMMIT \
-              golemnetwork/arkiv-op-geth:$SHORT_COMMIT-amd64 \
-              golemnetwork/arkiv-op-geth:$SHORT_COMMIT-arm64
+              --tag ${{ env.DOCKERHUB_IMAGE }}:$SHORT_COMMIT \
+              ${{ env.DOCKERHUB_IMAGE }}:$SHORT_COMMIT-amd64 \
+              ${{ env.DOCKERHUB_IMAGE }}:$SHORT_COMMIT-arm64
             
             # Create manifest for tag
             docker buildx imagetools create \
-              --tag golemnetwork/arkiv-op-geth:$TAG \
-              golemnetwork/arkiv-op-geth:$TAG-amd64 \
-              golemnetwork/arkiv-op-geth:$TAG-arm64
+              --tag ${{ env.DOCKERHUB_IMAGE }}:$TAG \
+              ${{ env.DOCKERHUB_IMAGE }}:$TAG-amd64 \
+              ${{ env.DOCKERHUB_IMAGE }}:$TAG-arm64
+
+            # Create GHCR manifest for commit SHA
+            docker buildx imagetools create \
+              --tag ${{ env.GHCR_IMAGE }}:$SHORT_COMMIT \
+              ${{ env.GHCR_IMAGE }}:$SHORT_COMMIT-amd64 \
+              ${{ env.GHCR_IMAGE }}:$SHORT_COMMIT-arm64
+            
+            # Create GHCR manifest for tag
+            docker buildx imagetools create \
+              --tag ${{ env.GHCR_IMAGE }}:$TAG \
+              ${{ env.GHCR_IMAGE }}:$TAG-amd64 \
+              ${{ env.GHCR_IMAGE }}:$TAG-arm64
           fi
