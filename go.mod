@@ -4,7 +4,7 @@ go 1.25.4
 
 require (
 	github.com/Arkiv-Network/arkiv-events v0.0.4
-	github.com/Arkiv-Network/sqlite-bitmap-store v0.0.22
+	github.com/Arkiv-Network/pebble-bitmap-store v0.0.3
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.2.0
 	github.com/BurntSushi/toml v1.5.0
 	github.com/Microsoft/go-winio v0.6.2
@@ -125,7 +125,6 @@ require (
 	github.com/goccy/go-json v0.10.4 // indirect
 	github.com/gofrs/uuid v4.3.1+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang-migrate/migrate/v4 v4.19.1 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/pprof v0.0.0-20250403155104-27863c87afa6 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
@@ -138,14 +137,13 @@ require (
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
-	github.com/mattn/go-sqlite3 v1.14.33 // indirect
 	github.com/minio/sha256-simd v1.0.0 // indirect
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
 	github.com/mitchellh/pointerstructure v1.2.0 // indirect
 	github.com/mschoch/smat v0.2.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/naoina/go-stringutil v0.1.0 // indirect
-	github.com/nxadm/tail v1.4.8 // indirect
+	github.com/onsi/ginkgo v1.16.4 // indirect
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
 	github.com/pion/dtls/v2 v2.2.7 // indirect
 	github.com/pion/logging v0.2.2 // indirect
@@ -158,7 +156,7 @@ require (
 	github.com/prometheus/common v0.66.1 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
-	github.com/rogpeppe/go-internal v1.12.0 // indirect
+	github.com/rogpeppe/go-internal v1.13.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect

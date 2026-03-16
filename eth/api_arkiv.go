@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"time"
 
-	sqlitestore "github.com/Arkiv-Network/sqlite-bitmap-store"
+	"github.com/Arkiv-Network/pebble-bitmap-store/pebblestore"
 	"github.com/ethereum/go-ethereum/arkiv/storageaccounting"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
@@ -14,10 +14,10 @@ import (
 
 type arkivAPI struct {
 	eth   *Ethereum
-	store *sqlitestore.SQLiteStore
+	store *pebblestore.PebbleStore
 }
 
-func NewArkivAPI(eth *Ethereum, store *sqlitestore.SQLiteStore) (*arkivAPI, error) {
+func NewArkivAPI(eth *Ethereum, store *pebblestore.PebbleStore) (*arkivAPI, error) {
 	return &arkivAPI{
 		eth:   eth,
 		store: store,
@@ -27,10 +27,10 @@ func NewArkivAPI(eth *Ethereum, store *sqlitestore.SQLiteStore) (*arkivAPI, erro
 func (api *arkivAPI) Query(
 	ctx context.Context,
 	req string,
-	op *sqlitestore.Options,
-) (*sqlitestore.QueryResponse, error) {
+	op *pebblestore.Options,
+) (*pebblestore.QueryResponse, error) {
 	if op == nil {
-		op = &sqlitestore.Options{}
+		op = &pebblestore.Options{}
 	}
 	if op.AtBlock == nil {
 		lastBlock := api.eth.blockchain.CurrentHeader().Number.Uint64()
@@ -52,11 +52,11 @@ func (api *arkivAPI) Query(
 // GetEntityCount returns the total number of entities in the storage.
 func (api *arkivAPI) GetEntityCount(ctx context.Context) (uint64, error) {
 
-	count, err := api.store.GetNumberOfEntities(ctx)
+	count, err := api.store.GetNumberOfEntities(ctx, 0)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get entity count: %w", err)
 	}
-	return count, nil
+	return uint64(count), nil
 
 }
 
