@@ -13,7 +13,7 @@ Our fork manages entities that are structured indexed data objects stored on-cha
 We also have added RPC methods to search and retrieve stored data.
 
 For details on our Arkiv storage layer, please visit the [README.md](./arkiv/README.md) found in the [arkiv folder](./arkiv/).
-
+ 
 ## 🏃 Running Locally
 
 We've provided a docker-compose.yml file that builds and launches the services within several docker containers. This way you can run it with one line:
