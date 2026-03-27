@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	sqlitestore "github.com/Arkiv-Network/sqlite-bitmap-store"
+	sqlitestore "github.com/Arkiv-Network/pebble-bitmap-store-notemp/pebblestore"
 	"github.com/ethereum/go-ethereum/arkiv/storagetx"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"

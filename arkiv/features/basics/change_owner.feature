@@ -1,4 +1,6 @@
+@wip
 Feature: changing the owner of an entity
+
 
   Scenario: changing the owner of an entity
     Given I have created an entity

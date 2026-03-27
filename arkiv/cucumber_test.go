@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	sqlitestore "github.com/Arkiv-Network/sqlite-bitmap-store"
+	pebblestore "github.com/Arkiv-Network/pebble-bitmap-store-notemp/pebblestore"
 	"github.com/cucumber/godog"
 	"github.com/cucumber/godog/colors"
 	"github.com/ethereum/go-ethereum/arkiv/address"
@@ -268,22 +268,22 @@ func iShouldSeeAnErrorContaining(ctx context.Context, expectedSubstring string) 
 func iSearchForEntitiesWithoutColumns(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
 
-	response := sqlitestore.QueryResponse{}
+	response := pebblestore.QueryResponse{}
 	err := w.GethInstance.RPCClient.CallContext(
 		ctx,
 		&response,
 		"arkiv_query",
 		`foo = "bar"`,
-		sqlitestore.Options{
-			IncludeData: &sqlitestore.IncludeData{},
+		pebblestore.Options{
+			IncludeData: &pebblestore.IncludeData{},
 		},
 	)
 
 	w.LastError = err
 
-	edList := []sqlitestore.EntityData{}
+	edList := []pebblestore.EntityData{}
 	for _, d := range response.Data {
-		ed := sqlitestore.EntityData{}
+		ed := pebblestore.EntityData{}
 
 		err = json.Unmarshal(d, &ed)
 		if err != nil {
@@ -300,7 +300,7 @@ func iSearchForEntitiesWithoutColumns(ctx context.Context) error {
 func iSearchForAllEntities(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
 
-	response := sqlitestore.QueryResponse{}
+	response := pebblestore.QueryResponse{}
 	err := w.GethInstance.RPCClient.CallContext(
 		ctx,
 		&response,
@@ -310,9 +310,9 @@ func iSearchForAllEntities(ctx context.Context) error {
 
 	w.LastError = err
 
-	edList := []sqlitestore.EntityData{}
+	edList := []pebblestore.EntityData{}
 	for _, d := range response.Data {
-		ed := sqlitestore.EntityData{}
+		ed := pebblestore.EntityData{}
 
 		err = json.Unmarshal(d, &ed)
 		if err != nil {
@@ -448,14 +448,14 @@ func theEntityShouldBeCreated(ctx context.Context) error {
 
 	rcpClient := w.GethInstance.RPCClient
 
-	var e sqlitestore.QueryResponse
+	var e pebblestore.QueryResponse
 	err := rcpClient.CallContext(
 		ctx,
 		&e,
 		"arkiv_query",
 		fmt.Sprintf(`$key = %s`, key.Hex()),
-		sqlitestore.Options{
-			IncludeData: &sqlitestore.IncludeData{
+		pebblestore.Options{
+			IncludeData: &pebblestore.IncludeData{
 				Key:         true,
 				Payload:     true,
 				ContentType: true,
@@ -466,7 +466,7 @@ func theEntityShouldBeCreated(ctx context.Context) error {
 		return fmt.Errorf("failed to get storage value: %w", err)
 	}
 
-	ed := sqlitestore.EntityData{}
+	ed := pebblestore.EntityData{}
 
 	err = json.Unmarshal(e.Data[0], &ed)
 	if err != nil {
@@ -499,7 +499,7 @@ func theExpiryOfTheEntityShouldBeRecorded(ctx context.Context) error {
 
 	key := receipt.Logs[0].Topics[1]
 
-	var result sqlitestore.QueryResponse
+	var result pebblestore.QueryResponse
 
 	err := rcpClient.CallContext(
 		ctx,
@@ -516,7 +516,7 @@ func theExpiryOfTheEntityShouldBeRecorded(ctx context.Context) error {
 		return fmt.Errorf("unexpected number of entities to expire: %d (expected 1)", len(result.Data))
 	}
 
-	ed := sqlitestore.EntityData{}
+	ed := pebblestore.EntityData{}
 
 	err = json.Unmarshal(result.Data[0], &ed)
 	if err != nil {
@@ -537,14 +537,14 @@ func iShouldBeAbleToRetrieveTheEntityByTheStringAnnotation(ctx context.Context) 
 
 	rcpClient := w.GethInstance.RPCClient
 
-	entities := sqlitestore.QueryResponse{}
+	entities := pebblestore.QueryResponse{}
 	err := rcpClient.CallContext(
 		ctx,
 		&entities,
 		"arkiv_query",
 		`test_key = "test_value"`,
-		sqlitestore.Options{
-			IncludeData: &sqlitestore.IncludeData{
+		pebblestore.Options{
+			IncludeData: &pebblestore.IncludeData{
 				Key:         true,
 				Payload:     true,
 				ContentType: true,
@@ -559,7 +559,7 @@ func iShouldBeAbleToRetrieveTheEntityByTheStringAnnotation(ctx context.Context) 
 		return fmt.Errorf("unexpected number of entities retrieved: %d (expected 1)", len(entities.Data))
 	}
 
-	ed := sqlitestore.EntityData{}
+	ed := pebblestore.EntityData{}
 
 	err = json.Unmarshal(entities.Data[0], &ed)
 	if err != nil {
@@ -582,7 +582,7 @@ func iShouldBeAbleToRetrieveTheEntityByTheNumericAnnotation(ctx context.Context)
 	key := receipt.Logs[0].Topics[1]
 	rcpClient := w.GethInstance.RPCClient
 
-	entities := sqlitestore.QueryResponse{}
+	entities := pebblestore.QueryResponse{}
 	err := rcpClient.CallContext(
 		ctx,
 		&entities,
@@ -597,7 +597,7 @@ func iShouldBeAbleToRetrieveTheEntityByTheNumericAnnotation(ctx context.Context)
 		return fmt.Errorf("unexpected number of entities to retrieved: %d (expected 1)", len(entities.Data))
 	}
 
-	ed := sqlitestore.EntityData{}
+	ed := pebblestore.EntityData{}
 
 	err = json.Unmarshal(entities.Data[0], &ed)
 	if err != nil {
@@ -690,7 +690,7 @@ func iSearchForEntitiesWithTheStringAnnotationEqualTo(ctx context.Context, key, 
 	w := testutil.GetWorld(ctx)
 	rcpClient := w.GethInstance.RPCClient
 
-	res := sqlitestore.QueryResponse{}
+	res := pebblestore.QueryResponse{}
 	err := rcpClient.CallContext(
 		ctx,
 		&res,
@@ -701,9 +701,9 @@ func iSearchForEntitiesWithTheStringAnnotationEqualTo(ctx context.Context, key, 
 		return fmt.Errorf("failed to get entities by numeric annotation: %w", err)
 	}
 
-	edList := []sqlitestore.EntityData{}
+	edList := []pebblestore.EntityData{}
 	for _, d := range res.Data {
-		ed := sqlitestore.EntityData{}
+		ed := pebblestore.EntityData{}
 
 		err = json.Unmarshal(d, &ed)
 		if err != nil {
@@ -767,7 +767,7 @@ func iSearchForEntitiesWithTheNumericAnnotationEqualTo(ctx context.Context, key 
 		return fmt.Errorf("failed to parse numeric value: %w", err)
 	}
 
-	res := sqlitestore.QueryResponse{}
+	res := pebblestore.QueryResponse{}
 	if err = rcpClient.CallContext(
 		ctx,
 		&res,
@@ -777,9 +777,9 @@ func iSearchForEntitiesWithTheNumericAnnotationEqualTo(ctx context.Context, key 
 		return fmt.Errorf("failed to get entities by numeric annotation: %w", err)
 	}
 
-	edList := []sqlitestore.EntityData{}
+	edList := []pebblestore.EntityData{}
 	for _, d := range res.Data {
-		ed := sqlitestore.EntityData{}
+		ed := pebblestore.EntityData{}
 
 		err = json.Unmarshal(d, &ed)
 		if err != nil {
@@ -890,7 +890,7 @@ func thePayloadOfTheEntityShouldBeChanged(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
 	rpcClient := w.GethInstance.RPCClient
 
-	entities := sqlitestore.QueryResponse{}
+	entities := pebblestore.QueryResponse{}
 	err := rpcClient.CallContext(
 		ctx,
 		&entities,
@@ -905,7 +905,7 @@ func thePayloadOfTheEntityShouldBeChanged(ctx context.Context) error {
 		return fmt.Errorf("unexpected number of entities to retrieved: %d (expected 1)", len(entities.Data))
 	}
 
-	ed := sqlitestore.EntityData{}
+	ed := pebblestore.EntityData{}
 
 	err = json.Unmarshal(entities.Data[0], &ed)
 	if err != nil {
@@ -957,7 +957,7 @@ func theAnnotationsOfTheEntityShouldBeChanged(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
 	rpcClient := w.GethInstance.RPCClient
 
-	res := sqlitestore.QueryResponse{}
+	res := pebblestore.QueryResponse{}
 	err := rpcClient.CallContext(
 		ctx,
 		&res,
@@ -972,7 +972,7 @@ func theAnnotationsOfTheEntityShouldBeChanged(ctx context.Context) error {
 		return fmt.Errorf("could not find any result when searching by new annotations")
 	}
 
-	ed := sqlitestore.EntityData{}
+	ed := pebblestore.EntityData{}
 
 	err = json.Unmarshal(res.Data[0], &ed)
 	if err != nil {
@@ -990,7 +990,7 @@ func theAnnotationsOfTheEntityAtThePreviousBlockShouldNotBeChanged(ctx context.C
 	w := testutil.GetWorld(ctx)
 	rpcClient := w.GethInstance.RPCClient
 
-	res := sqlitestore.QueryResponse{}
+	res := pebblestore.QueryResponse{}
 
 	block, err := w.GethInstance.ETHClient.BlockNumber(ctx)
 	if err != nil {
@@ -1003,7 +1003,7 @@ func theAnnotationsOfTheEntityAtThePreviousBlockShouldNotBeChanged(ctx context.C
 		&res,
 		"arkiv_query",
 		`test_key = "test_value" && test_number=42`,
-		sqlitestore.Options{
+		pebblestore.Options{
 			AtBlock: (*hexutil.Uint64)(&atBlock),
 		},
 	)
@@ -1015,7 +1015,7 @@ func theAnnotationsOfTheEntityAtThePreviousBlockShouldNotBeChanged(ctx context.C
 		return fmt.Errorf("could not find any result when searching by annotations at the previous block")
 	}
 
-	ed := sqlitestore.EntityData{}
+	ed := pebblestore.EntityData{}
 
 	err = json.Unmarshal(res.Data[0], &ed)
 	if err != nil {
@@ -1068,7 +1068,7 @@ func theBtlOfTheEntityShouldBeChanged(ctx context.Context) error {
 	key := receipt.Logs[0].Topics[1]
 	rcpClient := w.GethInstance.RPCClient
 
-	entities := sqlitestore.QueryResponse{}
+	entities := pebblestore.QueryResponse{}
 	err := rcpClient.CallContext(
 		ctx,
 		&entities,
@@ -1083,7 +1083,7 @@ func theBtlOfTheEntityShouldBeChanged(ctx context.Context) error {
 		return fmt.Errorf("unexpected number of entities to expire: %d (expected 1)", len(entities.Data))
 	}
 
-	ed := sqlitestore.EntityData{}
+	ed := pebblestore.EntityData{}
 
 	err = json.Unmarshal(entities.Data[0], &ed)
 	if err != nil {
@@ -1142,7 +1142,7 @@ func iSearchForEntitiesWithTheQuery(ctx context.Context, queryDoc *godog.DocStri
 	w := testutil.GetWorld(ctx)
 	rcpClient := w.GethInstance.RPCClient
 
-	res := sqlitestore.QueryResponse{}
+	res := pebblestore.QueryResponse{}
 	err := rcpClient.CallContext(
 		ctx,
 		&res,
@@ -1153,9 +1153,9 @@ func iSearchForEntitiesWithTheQuery(ctx context.Context, queryDoc *godog.DocStri
 		return fmt.Errorf("failed to get entities by numeric annotation: %w", err)
 	}
 
-	edList := []sqlitestore.EntityData{}
+	edList := []pebblestore.EntityData{}
 	for _, d := range res.Data {
-		ed := sqlitestore.EntityData{}
+		ed := pebblestore.EntityData{}
 
 		err = json.Unmarshal(d, &ed)
 		if err != nil {
@@ -1323,7 +1323,7 @@ func theNumberOfEntitiesShouldBe(ctx context.Context, expected int) error {
 		return fmt.Errorf("expected %d entities, but got %d", expected, count)
 	}
 
-	entities := sqlitestore.QueryResponse{}
+	entities := pebblestore.QueryResponse{}
 	err = rpcClient.CallContext(
 		ctx,
 		&entities,
@@ -1346,7 +1346,7 @@ func theEntityShouldBeInTheListOfAllEntities(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
 	rpcClient := w.GethInstance.RPCClient
 
-	entities := sqlitestore.QueryResponse{}
+	entities := pebblestore.QueryResponse{}
 	if err := rpcClient.CallContext(
 		ctx,
 		&entities,
@@ -1359,7 +1359,7 @@ func theEntityShouldBeInTheListOfAllEntities(ctx context.Context) error {
 	found := false
 	for _, entity := range entities.Data {
 
-		ed := sqlitestore.EntityData{}
+		ed := pebblestore.EntityData{}
 
 		err := json.Unmarshal(entity, &ed)
 		if err != nil {
@@ -1382,7 +1382,7 @@ func theListOfAllEntitiesShouldBeEmpty(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
 	rpcClient := w.GethInstance.RPCClient
 
-	entities := sqlitestore.QueryResponse{}
+	entities := pebblestore.QueryResponse{}
 	err := rpcClient.CallContext(
 		ctx,
 		&entities,
@@ -1404,7 +1404,7 @@ func theEntityShouldBeInTheListOfEntitiesOfTheOwner(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
 	rpcClient := w.GethInstance.RPCClient
 
-	entities := sqlitestore.QueryResponse{}
+	entities := pebblestore.QueryResponse{}
 	if err := rpcClient.CallContext(
 		ctx,
 		&entities,
@@ -1420,7 +1420,7 @@ func theEntityShouldBeInTheListOfEntitiesOfTheOwner(ctx context.Context) error {
 	found := false
 	for _, entity := range entities.Data {
 
-		ed := sqlitestore.EntityData{}
+		ed := pebblestore.EntityData{}
 
 		err := json.Unmarshal(entity, &ed)
 		if err != nil {
@@ -1443,7 +1443,7 @@ func theSenderShouldBeTheOwnerOfTheEntity(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
 	rpcClient := w.GethInstance.RPCClient
 
-	entities := sqlitestore.QueryResponse{}
+	entities := pebblestore.QueryResponse{}
 	err := rpcClient.CallContext(
 		ctx,
 		&entities,
@@ -1461,7 +1461,7 @@ func theSenderShouldBeTheOwnerOfTheEntity(ctx context.Context) error {
 		return fmt.Errorf("unexpected number of entities retrieved: %d (expected 1)", len(entities.Data))
 	}
 
-	ed := sqlitestore.EntityData{}
+	ed := pebblestore.EntityData{}
 
 	err = json.Unmarshal(entities.Data[0], &ed)
 	if err != nil {
@@ -1479,7 +1479,7 @@ func theOwnerShouldNotHaveAnyEntities(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
 	rpcClient := w.GethInstance.RPCClient
 
-	entities := sqlitestore.QueryResponse{}
+	entities := pebblestore.QueryResponse{}
 	if err := rpcClient.CallContext(
 		ctx,
 		&entities,
@@ -1652,7 +1652,7 @@ func theExpiredEntitiesShouldBeDeleted(ctx context.Context) error {
 
 	rcpClient := w.GethInstance.RPCClient
 
-	arkivEntities := sqlitestore.QueryResponse{}
+	arkivEntities := pebblestore.QueryResponse{}
 
 	if err := rcpClient.CallContext(
 		ctx,
@@ -1674,7 +1674,7 @@ func theExpiredEntitiesShouldBeDeleted(ctx context.Context) error {
 func iSearchForEntitiesOfAnOwner(ctx context.Context) error {
 	w := testutil.GetWorld(ctx)
 
-	res := sqlitestore.QueryResponse{}
+	res := pebblestore.QueryResponse{}
 	err := w.GethInstance.RPCClient.CallContext(
 		ctx,
 		&res,
@@ -1685,9 +1685,9 @@ func iSearchForEntitiesOfAnOwner(ctx context.Context) error {
 		return fmt.Errorf("failed to get entities of owner: %w", err)
 	}
 
-	edList := []sqlitestore.EntityData{}
+	edList := []pebblestore.EntityData{}
 	for _, d := range res.Data {
-		ed := sqlitestore.EntityData{}
+		ed := pebblestore.EntityData{}
 
 		err = json.Unmarshal(d, &ed)
 		if err != nil {
@@ -2408,14 +2408,14 @@ func theOwnerOfTheEntityShouldBeChanged(ctx context.Context) error {
 
 	key := w.CreatedEntityKey
 
-	var e sqlitestore.QueryResponse
+	var e pebblestore.QueryResponse
 	err := rcpClient.CallContext(
 		ctx,
 		&e,
 		"arkiv_query",
 		fmt.Sprintf(`$key = %s`, key.Hex()),
-		sqlitestore.Options{
-			IncludeData: &sqlitestore.IncludeData{
+		pebblestore.Options{
+			IncludeData: &pebblestore.IncludeData{
 				Key:     true,
 				Payload: true,
 				Owner:   true,
@@ -2426,7 +2426,7 @@ func theOwnerOfTheEntityShouldBeChanged(ctx context.Context) error {
 		return fmt.Errorf("failed to get storage value: %w", err)
 	}
 
-	ed := sqlitestore.EntityData{}
+	ed := pebblestore.EntityData{}
 
 	err = json.Unmarshal(e.Data[0], &ed)
 	if err != nil {

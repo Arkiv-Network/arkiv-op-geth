@@ -32,7 +32,7 @@ import (
 	"github.com/holiman/uint256"
 	"golang.org/x/time/rate"
 
-	sqlitestore "github.com/Arkiv-Network/sqlite-bitmap-store"
+	pebblestore "github.com/Arkiv-Network/pebble-bitmap-store-notemp/pebblestore"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/arkiv/dbevents"
@@ -324,20 +324,15 @@ func New(stack *node.Node, config *ethconfig.Config) (*Ethereum, error) {
 	log.Info("Creating SQLStore", "path", stack.Config().GolemBaseSQLStateFile)
 	sqlStateFile := stack.Config().GolemBaseSQLStateFile
 
-	if sqlStateFile == "" {
-		sqlStateFile = ":memory:"
-	}
-
-	store, err := sqlitestore.NewSQLiteStore(
+	store, err := pebblestore.NewPebbleStore(
 		slog.New(log.Root().Handler()),
 		sqlStateFile,
-		7,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create sql store: %w", err)
 	}
 
-	lastBlock, err := store.GetLastBlock(context.Background())
+	lastBlock, err := store.GetLastBlock()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get last block from store: %w", err)
 	}

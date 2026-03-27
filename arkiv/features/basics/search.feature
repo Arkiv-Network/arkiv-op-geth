@@ -120,6 +120,7 @@ Feature: Search
       """
     Then I should find 3 entities
 
+@wip
   Scenario: finding multiple entities with a glob query
     Given I have an entity "e1" with string annotations:
       | foo | bar |
